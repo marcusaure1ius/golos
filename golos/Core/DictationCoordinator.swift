@@ -29,9 +29,12 @@ final class DictationCoordinator: ObservableObject {
         try await provider.start(modelDir: modelDir)
     }
 
-    /// Шлёт PCM-сэмплы в провайдер во время recording.
+    /// Шлёт PCM-сэмплы в провайдер во время recording или preparing.
     func feed(samples: Data) {
-        guard case .recording = state else { return }
+        switch state {
+        case .recording, .preparing: break
+        default: return
+        }
         try? provider.feed(samples: samples)
     }
 

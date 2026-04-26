@@ -74,6 +74,11 @@ fn main() -> Result<()> {
 
         let is_shutdown = matches!(req, Request::Shutdown);
 
+        // Если BeginSession — сбрасываем счётчик сэмплов перед новой сессией.
+        if matches!(req, Request::BeginSession) {
+            samples_read.store(0, std::sync::atomic::Ordering::SeqCst);
+        }
+
         // Если EndSession — ждём, что audio thread прочитал столько же сэмплов, сколько Swift послал.
         if let Request::EndSession { samples_total } = req {
             let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
@@ -92,13 +97,11 @@ fn main() -> Result<()> {
                     Err(_) => break,
                 }
             }
-            samples_read.store(0, std::sync::atomic::Ordering::SeqCst);
             let resp = {
                 let mut s = session.lock().expect("session mutex poisoned");
                 s.handle(Request::EndSession { samples_total })
             };
             write_response(&stdout, &resp)?;
-            if is_shutdown { break; }
             continue;
         }
 
