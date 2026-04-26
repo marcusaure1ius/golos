@@ -67,25 +67,41 @@ enum AudioDevices {
     }
 
     /// Looks up an AudioDeviceID for a given UID string. Returns nil if not found.
+    /// Enumerates all devices and compares UIDs — the AudioValueTranslation-based
+    /// kAudioHardwarePropertyDeviceForUID pattern is unreliable from Swift (CoreAudio
+    /// dereferences the input CFString in a way that crashes on Unmanaged.toOpaque pointers).
     static func audioDeviceID(forUid uid: String) -> AudioDeviceID? {
+        guard !uid.isEmpty else { return nil }
+
         var address = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDeviceForUID,
+            mSelector: kAudioHardwarePropertyDevices,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-        let cfUid = uid as CFString
-        var translation = AudioValueTranslation(
-            mInputData: Unmanaged.passUnretained(cfUid).toOpaque(),
-            mInputDataSize: UInt32(MemoryLayout<CFString>.size),
-            mOutputData: UnsafeMutableRawPointer.allocate(byteCount: MemoryLayout<AudioDeviceID>.size, alignment: MemoryLayout<AudioDeviceID>.alignment),
-            mOutputDataSize: UInt32(MemoryLayout<AudioDeviceID>.size)
-        )
-        defer { translation.mOutputData.deallocate() }
-        var size = UInt32(MemoryLayout<AudioValueTranslation>.size)
-        let err = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject),
-                                              &address, 0, nil, &size, &translation)
-        guard err == noErr else { return nil }
-        let deviceID = translation.mOutputData.load(as: AudioDeviceID.self)
-        return deviceID == kAudioDeviceUnknown ? nil : deviceID
+        var dataSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject),
+                                             &address, 0, nil, &dataSize) == noErr,
+              dataSize > 0 else { return nil }
+
+        let count = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+        var ids = [AudioDeviceID](repeating: 0, count: count)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject),
+                                         &address, 0, nil, &dataSize, &ids) == noErr else {
+            return nil
+        }
+
+        for id in ids {
+            var uidAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceUID,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var uidRef: CFString? = nil
+            var uidSize = UInt32(MemoryLayout<CFString?>.size)
+            guard AudioObjectGetPropertyData(id, &uidAddress, 0, nil, &uidSize, &uidRef) == noErr,
+                  let candidate = uidRef as String? else { continue }
+            if candidate == uid { return id }
+        }
+        return nil
     }
 }
