@@ -175,6 +175,7 @@ private let hotkeyCallback: CGEventTapCallBack = { _, type, event, refcon in
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
         if let tap = manager.eventTap {
             CGEvent.tapEnable(tap: tap, enable: true)
+            Log.hotkeys.warning("event tap re-enabled after disable type=\(String(describing: type), privacy: .public)")
         }
         return nil
     }
