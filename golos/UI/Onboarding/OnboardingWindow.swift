@@ -3,8 +3,6 @@ import SwiftUI
 struct OnboardingRoot: View {
     @StateObject var vm = OnboardingViewModel()
     @ObservedObject var settings: AppSettings = .shared
-    @Environment(\.dismissWindow) var dismissWindow
-
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 8) {
@@ -54,6 +52,6 @@ struct OnboardingRoot: View {
 
     private func close() {
         settings.firstRun = false
-        dismissWindow(id: "onboarding")
+        NSApp.keyWindow?.close()
     }
 }

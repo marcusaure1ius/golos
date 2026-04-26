@@ -1,51 +1,74 @@
 import SwiftUI
+import AppKit
 
 @main
 struct GolosApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var coordinator = AppCoordinator()
-    @Environment(\.openWindow) var openWindow
 
     var body: some Scene {
-        // Главное окно с настройками — открывается из menu bar или ⌘,
-        Window("Настройки golos", id: "settings") {
-            SettingsRoot()
-                .environmentObject(coordinator)
-                .task { bootstrapIfNeeded() }
-        }
-        .windowResizability(.contentMinSize)
-        .commands {
-            CommandGroup(replacing: .appSettings) {
-                Button("Настройки…") { openWindow(id: "settings") }
-                    .keyboardShortcut(",")
-            }
-        }
-
-        // Onboarding — открывается на первом запуске или из настроек
-        Window("Настройка golos", id: "onboarding") {
-            OnboardingRoot()
-                .environmentObject(coordinator)
-        }
-        .windowResizability(.contentSize)
-        .defaultPosition(.center)
-    }
-
-    @MainActor
-    private func bootstrapIfNeeded() {
-        coordinator.start(
-            openSettings: { openWindow(id: "settings") },
-            openOnboarding: { openWindow(id: "onboarding") }
-        )
+        // Пустая Settings scene удерживает SwiftUI App alive.
+        // Реальные окна (settings + onboarding) открывает AppDelegate через NSHostingController.
+        Settings { EmptyView() }
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
+    let coordinator = AppCoordinator()
+
+    private var settingsWindow: NSWindow?
+    private var onboardingWindow: NSWindow?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Запретить выход при закрытии последнего окна — у нас menu bar app.
         NSApp.setActivationPolicy(.accessory)
+
+        coordinator.start(
+            openSettings: { [weak self] in self?.showSettings() },
+            openOnboarding: { [weak self] in self?.showOnboarding() }
+        )
     }
+
+    func showSettings() {
+        if settingsWindow == nil {
+            let host = NSHostingController(rootView: SettingsRoot()
+                .environmentObject(coordinator))
+            let w = NSWindow(contentViewController: host)
+            w.title = "Настройки golos"
+            w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+            w.identifier = NSUserInterfaceItemIdentifier("settings")
+            w.setContentSize(NSSize(width: 920, height: 600))
+            w.center()
+            w.isReleasedWhenClosed = false
+            settingsWindow = w
+        }
+        settingsWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func showOnboarding() {
+        if onboardingWindow == nil {
+            let host = NSHostingController(rootView: OnboardingRoot()
+                .environmentObject(coordinator))
+            let w = NSWindow(contentViewController: host)
+            w.title = "Настройка golos"
+            w.styleMask = [.titled, .closable, .fullSizeContentView]
+            w.identifier = NSUserInterfaceItemIdentifier("onboarding")
+            w.setContentSize(NSSize(width: 580, height: 580))
+            w.center()
+            w.isReleasedWhenClosed = false
+            // По закрытию — больше не считаем это первым запуском.
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.willCloseNotification,
+                object: w, queue: .main
+            ) { _ in AppSettings.shared.firstRun = false }
+            onboardingWindow = w
+        }
+        onboardingWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // Reopen → открыть Settings.
-        true
+        showSettings()
+        return false
     }
 }
