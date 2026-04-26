@@ -1,17 +1,18 @@
-//
-//  golosApp.swift
-//  golos
-//
-//  Created by Alfa on 26.04.2026.
-//
-
 import SwiftUI
 
 @main
-struct golosApp: App {
+struct GolosApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+        // Главное окно (Settings) — будет добавлено в Task 15.
+        // Сейчас — пустая Scene, чтобы приложение могло запуститься в menu bar mode.
+        Settings { EmptyView() }
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Wire-up в Task 17.
     }
 }
