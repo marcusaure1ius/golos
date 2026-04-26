@@ -9,6 +9,10 @@ license = "MIT"
 name = "golos-asr"
 path = "src/main.rs"
 
+[lib]
+name = "golos_asr"
+path = "src/lib.rs"
+
 [dependencies]
 transcribe-rs = { version = "0.3", features = ["onnx"] }
 serde = { version = "1", features = ["derive"] }
