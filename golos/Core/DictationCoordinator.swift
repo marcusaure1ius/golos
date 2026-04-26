@@ -74,7 +74,10 @@ final class DictationCoordinator: ObservableObject {
         Task {
             do {
                 let result = try await provider.finalize()
-                _ = await injector.inject(text: result.text)
+                let outcome = await injector.inject(text: result.text)
+                if case .copiedToClipboard = outcome {
+                    Notifications.show(title: L10n.notifClipboard, body: L10n.notifClipboardBody)
+                }
                 self.state = .idle
             } catch {
                 self.state = .error(message: error.localizedDescription)
