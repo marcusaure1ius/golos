@@ -3,20 +3,51 @@ import Foundation
 // MARK: - ResponseCorrelator
 
 /// Maps request id → continuation. Stale responses (unknown id) are silently discarded.
+///
+/// Race window between `try send(...)` (синхронный write в pipe) и
+/// последующим `await(id:)` означал, что sidecar мог ответить ДО того, как
+/// caller успел зарегистрировать continuation — Final дропался, caller висел до timeout.
+/// Решение: caller сначала вызывает `expect(id:)`, и любой пришедший в окне ответ
+/// сохраняется в `early`; следующий `await(id:)` достаёт его без ожидания.
 actor ResponseCorrelator {
     private var pending: [UInt64: CheckedContinuation<SidecarResponse, Error>] = [:]
+    private var expected: Set<UInt64> = []
+    private var early: [UInt64: SidecarResponse] = [:]
+
+    /// Зарегистрировать намерение ждать ответа с этим id. Вызывать ДО send,
+    /// чтобы deliver, пришедший до `await(id:)`, не дропался.
+    func expect(id: UInt64) {
+        expected.insert(id)
+    }
+
+    /// Отменить ожидание (например, send упал). Чистит early.
+    func cancelExpect(id: UInt64) {
+        expected.remove(id)
+        early.removeValue(forKey: id)
+    }
 
     func deliver(_ resp: SidecarResponse) {
         guard let id = resp.id else { return }  // unsolicited (Hello, Partial) — ignore for request flow
         if let cont = pending.removeValue(forKey: id) {
+            expected.remove(id)
             cont.resume(returning: resp)
+            return
         }
-        // Stale id (no waiter) — silently ignore.
+        if expected.contains(id) {
+            // Caller ждёт этот id, но await ещё не успел зарегистрировать continuation —
+            // сохраним до его прихода.
+            early[id] = resp
+            return
+        }
+        // Stale id без ожидания — silently ignore.
     }
 
     /// Wait for the response matching `id`, or throw TranscriptionError.timeout.
     func `await`(id: UInt64, timeout: TimeInterval) async throws -> SidecarResponse {
-        // We store continuation here inside the actor. If we time out we remove it.
+        if let resp = early.removeValue(forKey: id) {
+            expected.remove(id)
+            return resp
+        }
         return try await withCheckedThrowingContinuation { cont in
             pending[id] = cont
             // Schedule timeout.
@@ -29,6 +60,7 @@ actor ResponseCorrelator {
 
     private func expireIfPending(id: UInt64) {
         if let cont = pending.removeValue(forKey: id) {
+            expected.remove(id)
             cont.resume(throwing: TranscriptionError.timeout)
         }
     }
@@ -36,6 +68,8 @@ actor ResponseCorrelator {
     func failAll(_ error: Error) {
         for (_, c) in pending { c.resume(throwing: error) }
         pending.removeAll()
+        expected.removeAll()
+        early.removeAll()
     }
 }
 
@@ -78,11 +112,11 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     func start(modelDir: URL) async throws {
         try spawnSidecarIfNeeded()
         try await waitForHello(timeout: 5)
-        let id = nextRequestId()
-        try send(.load(id: id, modelPath: modelDir.path))
         // ONNX Runtime: graph optimizations + session creation для ~340MB модели
         // могут занимать десятки секунд (особенно холодный старт). 30s недостаточно.
-        let resp = try await correlator.await(id: id, timeout: 120)
+        let resp = try await roundtrip(makeRequest: { id in
+            .load(id: id, modelPath: modelDir.path)
+        }, timeout: 120)
         switch resp {
         case .ready: return
         case .error(_, _, let msg): throw TranscriptionError.modelLoadFailed(msg)
@@ -92,9 +126,9 @@ final class LocalGigaAMProvider: TranscriptionProvider {
 
     func beginSession() async throws {
         samplesEnqueued = 0
-        let id = nextRequestId()
-        try send(.beginSession(id: id))
-        let resp = try await correlator.await(id: id, timeout: 5)
+        let resp = try await roundtrip(makeRequest: { id in
+            .beginSession(id: id)
+        }, timeout: 5)
         guard case .sessionStarted = resp else {
             throw TranscriptionError.protocolError("expected session_started, got \(resp)")
         }
@@ -111,9 +145,10 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     }
 
     func finalize() async throws -> Transcript {
-        let id = nextRequestId()
-        try send(.endSession(id: id, samplesTotal: samplesEnqueued))
-        let resp = try await correlator.await(id: id, timeout: 30)
+        let total = samplesEnqueued
+        let resp = try await roundtrip(makeRequest: { id in
+            .endSession(id: id, samplesTotal: total)
+        }, timeout: 30)
         switch resp {
         case .final(_, let text, let ms):
             return Transcript(text: text, durationMs: ms)
@@ -125,9 +160,9 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     }
 
     func cancel() async {
-        let id = nextRequestId()
-        try? send(.cancel(id: id))
-        _ = try? await correlator.await(id: id, timeout: 2)
+        _ = try? await roundtrip(makeRequest: { id in
+            .cancel(id: id)
+        }, timeout: 2)
     }
 
     func shutdown() async {
@@ -147,6 +182,23 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     private func nextRequestId() -> UInt64 {
         requestCounter &+= 1
         return requestCounter
+    }
+
+    /// Атомарно: выделить id → expect его в correlator → послать запрос → дождаться ответа.
+    /// Закрывает race-окно, в котором sidecar успевал ответить ДО регистрации continuation.
+    private func roundtrip(
+        makeRequest: (UInt64) -> SidecarRequest,
+        timeout: TimeInterval
+    ) async throws -> SidecarResponse {
+        let id = nextRequestId()
+        await correlator.expect(id: id)
+        do {
+            try send(makeRequest(id))
+        } catch {
+            await correlator.cancelExpect(id: id)
+            throw error
+        }
+        return try await correlator.await(id: id, timeout: timeout)
     }
 
     private func waitForHello(timeout: TimeInterval) async throws {
