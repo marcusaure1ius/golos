@@ -1,5 +1,46 @@
 import Foundation
 
+// MARK: - ResponseCorrelator
+
+/// Maps request id → continuation. Stale responses (unknown id) are silently discarded.
+actor ResponseCorrelator {
+    private var pending: [UInt64: CheckedContinuation<SidecarResponse, Error>] = [:]
+
+    func deliver(_ resp: SidecarResponse) {
+        guard let id = resp.id else { return }  // unsolicited (Hello, Partial) — ignore for request flow
+        if let cont = pending.removeValue(forKey: id) {
+            cont.resume(returning: resp)
+        }
+        // Stale id (no waiter) — silently ignore.
+    }
+
+    /// Wait for the response matching `id`, or throw TranscriptionError.timeout.
+    func `await`(id: UInt64, timeout: TimeInterval) async throws -> SidecarResponse {
+        // We store continuation here inside the actor. If we time out we remove it.
+        return try await withCheckedThrowingContinuation { cont in
+            pending[id] = cont
+            // Schedule timeout.
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                await self.expireIfPending(id: id)
+            }
+        }
+    }
+
+    private func expireIfPending(id: UInt64) {
+        if let cont = pending.removeValue(forKey: id) {
+            cont.resume(throwing: TranscriptionError.timeout)
+        }
+    }
+
+    func failAll(_ error: Error) {
+        for (_, c) in pending { c.resume(throwing: error) }
+        pending.removeAll()
+    }
+}
+
+// MARK: - LocalGigaAMProvider
+
 /// Реализация TranscriptionProvider, общающаяся с `golos-asr` sidecar
 /// через stdin/stdout (JSON-lines) + отдельный pipe для PCM.
 final class LocalGigaAMProvider: TranscriptionProvider {
@@ -13,15 +54,16 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     /// через --audio-fd, мы (write-end) держим у себя.
     private var writer: AudioWriter?
 
-    /// Параллельный listener stdout — публикует Response в continuation.
-    private var responseStream: AsyncStream<SidecarResponse>?
-    private var responseContinuation: AsyncStream<SidecarResponse>.Continuation?
+    private let correlator = ResponseCorrelator()
+    private var helloReceived = false
+    private var helloWaiters: [CheckedContinuation<Void, Error>] = []
 
     private let partialsContinuation: AsyncStream<String>.Continuation
     let partials: AsyncStream<String>
 
     private var isShuttingDown = false
     private var samplesEnqueued: UInt64 = 0
+    private var requestCounter: UInt64 = 0
 
     init(sidecarURL: URL = AppPaths.sidecarBinary) {
         self.sidecarURL = sidecarURL
@@ -34,24 +76,22 @@ final class LocalGigaAMProvider: TranscriptionProvider {
 
     func start(modelDir: URL) async throws {
         try spawnSidecarIfNeeded()
-        // Ждём hello.
-        guard case .hello = try await nextResponse(timeout: 5) else {
-            throw TranscriptionError.protocolError("expected hello")
-        }
-        // Шлём load.
-        try send(.load(modelPath: modelDir.path))
-        let resp = try await nextResponse(timeout: 30)
+        try await waitForHello(timeout: 5)
+        let id = nextRequestId()
+        try send(.load(id: id, modelPath: modelDir.path))
+        let resp = try await correlator.await(id: id, timeout: 30)
         switch resp {
         case .ready: return
-        case .error(_, let msg): throw TranscriptionError.modelLoadFailed(msg)
+        case .error(_, _, let msg): throw TranscriptionError.modelLoadFailed(msg)
         default: throw TranscriptionError.protocolError("unexpected after load: \(resp)")
         }
     }
 
     func beginSession() async throws {
         samplesEnqueued = 0
-        try send(.beginSession)
-        let resp = try await nextResponse(timeout: 5)
+        let id = nextRequestId()
+        try send(.beginSession(id: id))
+        let resp = try await correlator.await(id: id, timeout: 5)
         guard case .sessionStarted = resp else {
             throw TranscriptionError.protocolError("expected session_started, got \(resp)")
         }
@@ -68,44 +108,63 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     }
 
     func finalize() async throws -> Transcript {
-        try send(.endSession(samplesTotal: samplesEnqueued))
-        // Ждём final / error. Игнорируем partial по дороге (в MVP не используем).
-        while true {
-            let resp = try await nextResponse(timeout: 30)
-            switch resp {
-            case .partial: continue
-            case .final(let text, let ms):
-                return Transcript(text: text, durationMs: ms)
-            case .error(_, let msg):
-                throw TranscriptionError.transcribeFailed(msg)
-            default:
-                throw TranscriptionError.protocolError("unexpected during finalize: \(resp)")
-            }
+        let id = nextRequestId()
+        try send(.endSession(id: id, samplesTotal: samplesEnqueued))
+        let resp = try await correlator.await(id: id, timeout: 30)
+        switch resp {
+        case .final(_, let text, let ms):
+            return Transcript(text: text, durationMs: ms)
+        case .error(_, _, let msg):
+            throw TranscriptionError.transcribeFailed(msg)
+        default:
+            throw TranscriptionError.protocolError("unexpected during finalize: \(resp)")
         }
     }
 
     func cancel() async {
-        try? send(.cancel)
-        // Ждём cancelled, но не валим если timeout.
-        _ = try? await nextResponse(timeout: 2)
+        let id = nextRequestId()
+        try? send(.cancel(id: id))
+        _ = try? await correlator.await(id: id, timeout: 2)
     }
 
     func shutdown() async {
         isShuttingDown = true
-        try? send(.shutdown)
-        // Закрываем audio write end — sidecar получит EOF, audio thread выйдет.
+        let id = nextRequestId()
+        try? send(.shutdown(id: id))
         if let w = writer { await w.close() }
         writer = nil
-        // Ждём процесс с timeout.
         let proc = process
         process = nil
-        await Task.detached {
-            proc?.waitUntilExit()
-        }.value
-        responseContinuation?.finish()
+        await Task.detached { proc?.waitUntilExit() }.value
+        await correlator.failAll(TranscriptionError.sidecarNotRunning)
     }
 
     // MARK: Private
+
+    private func nextRequestId() -> UInt64 {
+        requestCounter &+= 1
+        return requestCounter
+    }
+
+    private func waitForHello(timeout: TimeInterval) async throws {
+        if helloReceived { return }
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                    Task { @MainActor [weak self] in
+                        guard let self else { cont.resume(); return }
+                        self.helloWaiters.append(cont)
+                    }
+                }
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                throw TranscriptionError.timeout
+            }
+            _ = try await group.next()!
+            group.cancelAll()
+        }
+    }
 
     private func spawnSidecarIfNeeded() throws {
         if process?.isRunning == true { return }
@@ -143,15 +202,24 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         stderrHandle = stderr.fileHandleForReading
         writer = AudioWriter(fd: writeFd)
 
-        // Стрим ответов — отдельная задача.
-        var cont: AsyncStream<SidecarResponse>.Continuation!
-        responseStream = AsyncStream { c in cont = c }
-        responseContinuation = cont
+        // Reset hello state for new process.
+        helloReceived = false
+
         let outHandle = stdoutHandle!
         let partialsCont = partialsContinuation
+        let correlator = self.correlator
         Task.detached { [weak self] in
-            await Self.readResponseLoop(handle: outHandle, continuation: cont, partials: partialsCont)
-            // Авто-перезапуск, если не shutdown.
+            await Self.readResponseLoop(
+                handle: outHandle,
+                correlator: correlator,
+                partials: partialsCont,
+                onHello: { Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.helloReceived = true
+                    for c in self.helloWaiters { c.resume() }
+                    self.helloWaiters.removeAll()
+                }}
+            )
             if let self, !self.isShuttingDown {
                 Log.sidecar.warning("sidecar closed unexpectedly")
             }
@@ -167,8 +235,9 @@ final class LocalGigaAMProvider: TranscriptionProvider {
 
     private static func readResponseLoop(
         handle: FileHandle,
-        continuation: AsyncStream<SidecarResponse>.Continuation,
-        partials: AsyncStream<String>.Continuation
+        correlator: ResponseCorrelator,
+        partials: AsyncStream<String>.Continuation,
+        onHello: @escaping () -> Void
     ) async {
         let decoder = JSONDecoder()
         do {
@@ -176,10 +245,13 @@ final class LocalGigaAMProvider: TranscriptionProvider {
                 guard let data = line.data(using: .utf8) else { continue }
                 do {
                     let resp = try decoder.decode(SidecarResponse.self, from: data)
-                    if case .partial(let t) = resp {
-                        partials.yield(t)
+                    if case .hello = resp {
+                        onHello()
+                    } else if case .partial(let text) = resp {
+                        partials.yield(text)
+                    } else {
+                        await correlator.deliver(resp)
                     }
-                    continuation.yield(resp)
                 } catch {
                     Log.sidecar.error("decode error: \(error.localizedDescription, privacy: .public) line=\(line, privacy: .public)")
                 }
@@ -187,7 +259,6 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         } catch {
             Log.sidecar.error("stdout read error: \(error.localizedDescription, privacy: .public)")
         }
-        continuation.finish()
     }
 
     private func send(_ req: SidecarRequest) throws {
@@ -197,24 +268,5 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         var data = try JSONEncoder().encode(req)
         data.append(0x0A) // \n
         try h.write(contentsOf: data)
-    }
-
-    private func nextResponse(timeout seconds: TimeInterval) async throws -> SidecarResponse {
-        guard let stream = responseStream else {
-            throw TranscriptionError.sidecarNotRunning
-        }
-        return try await withThrowingTaskGroup(of: SidecarResponse.self) { group in
-            group.addTask {
-                for await resp in stream { return resp }
-                throw TranscriptionError.protocolError("stream closed")
-            }
-            group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                throw TranscriptionError.timeout
-            }
-            let result = try await group.next()!
-            group.cancelAll()
-            return result
-        }
     }
 }

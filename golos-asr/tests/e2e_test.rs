@@ -62,12 +62,12 @@ fn e2e_transcribes_sample_wav() {
     assert!(hello.contains("\"type\":\"hello\""), "hello expected, got: {}", hello);
 
     // 4. Послать load.
-    writeln!(stdin, r#"{{"type":"load","model_path":"{}"}}"#, model_dir).unwrap();
+    writeln!(stdin, r#"{{"type":"load","id":1,"model_path":"{}"}}"#, model_dir).unwrap();
     let ready = read_line(&mut reader);
     assert!(ready.contains("\"type\":\"ready\""), "ready expected, got: {}", ready);
 
     // 5. Begin session.
-    writeln!(stdin, r#"{{"type":"begin_session"}}"#).unwrap();
+    writeln!(stdin, r#"{{"type":"begin_session","id":2}}"#).unwrap();
     let started = read_line(&mut reader);
     assert!(started.contains("\"type\":\"session_started\""), "session_started expected, got: {}", started);
 
@@ -84,7 +84,8 @@ fn e2e_transcribes_sample_wav() {
     drop(audio_writer); // закрываем write end
 
     // 7. End session, читаем final.
-    writeln!(stdin, r#"{{"type":"end_session"}}"#).unwrap();
+    let samples_total = samples.len() as u64;
+    writeln!(stdin, r#"{{"type":"end_session","id":3,"samples_total":{}}}"#, samples_total).unwrap();
     let final_line = read_line(&mut reader);
     assert!(final_line.contains("\"type\":\"final\""), "final expected, got: {}", final_line);
     let lower = final_line.to_lowercase();
@@ -94,7 +95,7 @@ fn e2e_transcribes_sample_wav() {
     );
 
     // 8. Shutdown.
-    writeln!(stdin, r#"{{"type":"shutdown"}}"#).unwrap();
+    writeln!(stdin, r#"{{"type":"shutdown","id":4}}"#).unwrap();
     drop(stdin);
     let status = child.wait().expect("child waited");
     assert!(status.success(), "sidecar exit was {:?}", status);

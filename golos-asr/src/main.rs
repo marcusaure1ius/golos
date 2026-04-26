@@ -65,6 +65,7 @@ fn main() -> Result<()> {
             Ok(r) => r,
             Err(e) => {
                 write_response(&stdout, &Response::Error {
+                    id: None,
                     kind: "bad_request".into(),
                     message: format!("invalid JSON: {}", e),
                 })?;
@@ -72,15 +73,15 @@ fn main() -> Result<()> {
             }
         };
 
-        let is_shutdown = matches!(req, Request::Shutdown);
+        let is_shutdown = matches!(req, Request::Shutdown { .. });
 
         // Если BeginSession — сбрасываем счётчик сэмплов перед новой сессией.
-        if matches!(req, Request::BeginSession) {
+        if matches!(req, Request::BeginSession { .. }) {
             samples_read.store(0, std::sync::atomic::Ordering::SeqCst);
         }
 
         // Если EndSession — ждём, что audio thread прочитал столько же сэмплов, сколько Swift послал.
-        if let Request::EndSession { samples_total } = req {
+        if let Request::EndSession { id, samples_total } = req {
             let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
             while samples_read.load(std::sync::atomic::Ordering::SeqCst) < samples_total {
                 let remaining = deadline.saturating_duration_since(std::time::Instant::now());
@@ -99,7 +100,7 @@ fn main() -> Result<()> {
             }
             let resp = {
                 let mut s = session.lock().expect("session mutex poisoned");
-                s.handle(Request::EndSession { samples_total })
+                s.handle(Request::EndSession { id, samples_total })
             };
             write_response(&stdout, &resp)?;
             continue;

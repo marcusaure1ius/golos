@@ -4,24 +4,27 @@ import Testing
 
 struct SidecarProtocolTests {
     @Test func loadRequestEncodesAsExpected() throws {
-        let req = SidecarRequest.load(modelPath: "/tmp/m")
+        let req = SidecarRequest.load(id: 1, modelPath: "/tmp/m")
         let json = try JSONEncoder().encode(req)
         let str = String(data: json, encoding: .utf8)!
         #expect(str.contains(#""type":"load""#))
+        #expect(str.contains(#""id":1"#))
         #expect(str.contains(#""model_path":"\/tmp\/m""#) || str.contains(#""model_path":"/tmp/m""#))
     }
 
-    @Test func beginSessionEncodesAsTagOnly() throws {
-        let req = SidecarRequest.beginSession
+    @Test func beginSessionEncodesWithId() throws {
+        let req = SidecarRequest.beginSession(id: 2)
         let str = String(data: try JSONEncoder().encode(req), encoding: .utf8)!
-        #expect(str == #"{"type":"begin_session"}"#)
+        #expect(str.contains(#""type":"begin_session""#))
+        #expect(str.contains(#""id":2"#))
     }
 
     @Test func endSessionEncodesWithSamplesTotal() throws {
-        let data = try JSONEncoder().encode(SidecarRequest.endSession(samplesTotal: 32000))
+        let data = try JSONEncoder().encode(SidecarRequest.endSession(id: 3, samplesTotal: 32000))
         let json = String(data: data, encoding: .utf8)!
         #expect(json.contains("\"type\":\"end_session\""))
         #expect(json.contains("\"samples_total\":32000"))
+        #expect(json.contains("\"id\":3"))
     }
 
     @Test func helloResponseDecodes() throws {
@@ -32,18 +35,27 @@ struct SidecarProtocolTests {
     }
 
     @Test func finalResponseDecodes() throws {
-        let raw = #"{"type":"final","text":"привет","duration_ms":1234}"#
+        let raw = #"{"type":"final","id":7,"text":"привет","duration_ms":1234}"#
         let resp = try JSONDecoder().decode(SidecarResponse.self, from: raw.data(using: .utf8)!)
-        guard case .final(let text, let ms) = resp else { Issue.record("not final"); return }
+        guard case .final(let id, let text, let ms) = resp else { Issue.record("not final"); return }
+        #expect(id == 7)
         #expect(text == "привет")
         #expect(ms == 1234)
     }
 
     @Test func errorResponseDecodes() throws {
-        let raw = #"{"type":"error","kind":"model_not_loaded","message":"x"}"#
+        let raw = #"{"type":"error","id":null,"kind":"model_not_loaded","message":"x"}"#
         let resp = try JSONDecoder().decode(SidecarResponse.self, from: raw.data(using: .utf8)!)
-        guard case .error(let kind, let msg) = resp else { Issue.record("not error"); return }
+        guard case .error(let id, let kind, let msg) = resp else { Issue.record("not error"); return }
+        #expect(id == nil)
         #expect(kind == "model_not_loaded")
         #expect(msg == "x")
+    }
+
+    @Test func errorResponseWithIdDecodes() throws {
+        let raw = #"{"type":"error","id":5,"kind":"bad","message":"oops"}"#
+        let resp = try JSONDecoder().decode(SidecarResponse.self, from: raw.data(using: .utf8)!)
+        guard case .error(let id, _, _) = resp else { Issue.record("not error"); return }
+        #expect(id == 5)
     }
 }
