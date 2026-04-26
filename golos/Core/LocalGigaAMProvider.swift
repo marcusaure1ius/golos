@@ -43,6 +43,7 @@ actor ResponseCorrelator {
 
 /// Реализация TranscriptionProvider, общающаяся с `golos-asr` sidecar
 /// через stdin/stdout (JSON-lines) + отдельный pipe для PCM.
+@MainActor
 final class LocalGigaAMProvider: TranscriptionProvider {
     private let sidecarURL: URL
     private var process: Process?
@@ -149,12 +150,11 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     private func waitForHello(timeout: TimeInterval) async throws {
         if helloReceived { return }
         try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask {
+            group.addTask { @MainActor [self] in
+                // Re-check inside actor-isolated execution to close TOCTOU window.
+                if self.helloReceived { return }
                 try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-                    Task { @MainActor [weak self] in
-                        guard let self else { cont.resume(); return }
-                        self.helloWaiters.append(cont)
-                    }
+                    self.helloWaiters.append(cont)
                 }
             }
             group.addTask {
@@ -220,9 +220,13 @@ final class LocalGigaAMProvider: TranscriptionProvider {
                     self.helloWaiters.removeAll()
                 }}
             )
-            if let self, !self.isShuttingDown {
-                Log.sidecar.warning("sidecar closed unexpectedly")
-            }
+            await Task { @MainActor [weak self] in
+                guard let self else { return }
+                if !self.isShuttingDown {
+                    Log.sidecar.warning("sidecar closed unexpectedly")
+                    await correlator.failAll(TranscriptionError.sidecarNotRunning)
+                }
+            }.value
         }
         // Логирование stderr — отдельная задача.
         let errHandle = stderrHandle!
