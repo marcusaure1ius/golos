@@ -22,11 +22,11 @@ struct ModelFile {
     let url: URL
     let relativePath: String
     let sha256: String?         // optional verification
-    let sizeBytes: Int64
+    let sizeBytes: Int64?       // nil = неизвестно до загрузки
 }
 
 @MainActor
-final class ModelManager: ObservableObject {
+class ModelManager: ObservableObject {
     @Published private(set) var progress: ModelDownloadProgress?
     @Published private(set) var error: String?
 
@@ -35,44 +35,52 @@ final class ModelManager: ObservableObject {
         AppPaths.modelDir(id)
     }
 
-    /// Установлена ли модель локально (все файлы существуют, размеры совпадают).
+    /// Установлена ли модель локально (все файлы существуют; размер проверяется только если известен).
     func isInstalled(_ desc: ModelDescriptor) -> Bool {
         let dir = modelDir(desc.id)
         for f in desc.files {
             let path = dir.appendingPathComponent(f.relativePath)
-            guard let attr = try? FileManager.default.attributesOfItem(atPath: path.path),
-                  let size = attr[.size] as? Int64,
-                  size == f.sizeBytes else { return false }
+            guard FileManager.default.fileExists(atPath: path.path) else { return false }
+            if let expected = f.sizeBytes,
+               let attr = try? FileManager.default.attributesOfItem(atPath: path.path),
+               let size = attr[.size] as? Int64,
+               size != expected {
+                return false
+            }
         }
         return true
     }
 
     func download(_ desc: ModelDescriptor) async throws {
-        let dir = modelDir(desc.id)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        error = nil
+        do {
+            let dir = modelDir(desc.id)
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        let totalBytes = desc.files.map(\.sizeBytes).reduce(0, +)
-        var downloaded: Int64 = 0
-        progress = ModelDownloadProgress(bytesDownloaded: 0, bytesTotal: totalBytes)
+            let knownTotal = desc.files.compactMap(\.sizeBytes).reduce(0, +)
+            progress = ModelDownloadProgress(bytesDownloaded: 0, bytesTotal: knownTotal)
 
-        for f in desc.files {
-            let dest = dir.appendingPathComponent(f.relativePath)
-            try await downloadFile(f, to: dest, onChunk: { chunkSize in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    let total = self.progress?.bytesTotal ?? totalBytes
-                    let new = (self.progress?.bytesDownloaded ?? downloaded) + Int64(chunkSize)
-                    self.progress = .init(bytesDownloaded: new, bytesTotal: total)
-                }
-            })
-            downloaded += f.sizeBytes
+            for f in desc.files {
+                let dest = dir.appendingPathComponent(f.relativePath)
+                try await downloadFile(f, to: dest, onChunk: { chunkSize in
+                    Task { @MainActor [weak self] in
+                        guard let self, let p = self.progress else { return }
+                        self.progress = .init(bytesDownloaded: p.bytesDownloaded + Int64(chunkSize),
+                                              bytesTotal: p.bytesTotal)
+                    }
+                })
+            }
+            progress = nil
+        } catch {
+            self.error = error.localizedDescription
+            progress = nil
+            throw error
         }
-        progress = .init(bytesDownloaded: totalBytes, bytesTotal: totalBytes)
     }
 
     private func downloadFile(_ file: ModelFile, to dest: URL, onChunk: @escaping (Int) -> Void) async throws {
         let existing = (try? FileManager.default.attributesOfItem(atPath: dest.path)[.size] as? Int64) ?? 0
-        if existing == file.sizeBytes {
+        if let expected = file.sizeBytes, existing == expected {
             // Уже скачано полностью.
             return
         }
@@ -92,6 +100,15 @@ final class ModelManager: ObservableObject {
         }
 
         let appending = (http.statusCode == 206)
+        let contentLength = http.expectedContentLength  // -1 если неизвестно
+        if !appending, contentLength > 0 {
+            // Обновим total если был unknown.
+            Task { @MainActor [weak self] in
+                guard let self, let p = self.progress else { return }
+                let baseTotal = (p.bytesTotal == 0) ? contentLength : p.bytesTotal
+                self.progress = .init(bytesDownloaded: p.bytesDownloaded, bytesTotal: baseTotal)
+            }
+        }
         if !appending {
             FileManager.default.createFile(atPath: dest.path, contents: nil)
         } else if !FileManager.default.fileExists(atPath: dest.path) {
@@ -160,13 +177,13 @@ extension ModelDescriptor {
                 url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-rnnt/model.onnx")!,
                 relativePath: "model.onnx",
                 sha256: nil,
-                sizeBytes: 0
+                sizeBytes: nil
             ),
             ModelFile(
                 url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-rnnt/vocab.txt")!,
                 relativePath: "vocab.txt",
                 sha256: nil,
-                sizeBytes: 0
+                sizeBytes: nil
             ),
         ]
     )
@@ -179,13 +196,13 @@ extension ModelDescriptor {
                 url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-ctc/model.onnx")!,
                 relativePath: "model.onnx",
                 sha256: nil,
-                sizeBytes: 0
+                sizeBytes: nil
             ),
             ModelFile(
                 url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-ctc/vocab.txt")!,
                 relativePath: "vocab.txt",
                 sha256: nil,
-                sizeBytes: 0
+                sizeBytes: nil
             ),
         ]
     )

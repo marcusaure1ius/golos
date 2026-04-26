@@ -22,7 +22,7 @@ struct OnboardingRoot: View {
                 case 2: MicrophoneStep()
                 case 3: AccessibilityStep()
                 case 4: InputMonitoringStep()
-                case 5: ModelStep()
+                case 5: ModelStep(vm: vm)
                 case 6: AutolaunchStep(onChoice: { _ in vm.next() })
                 case 7: DemoStep()
                 default: EmptyView()
@@ -43,6 +43,7 @@ struct OnboardingRoot: View {
                     if vm.currentStep == vm.totalSteps { close() } else { vm.next() }
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(vm.currentStep == 5 && !vm.modelReady && !vm.didExplicitlySkipModel)
             }
             .padding(.horizontal, 16).padding(.vertical, 14)
         }

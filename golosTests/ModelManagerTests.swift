@@ -19,4 +19,33 @@ import Foundation
         let h = ModelManager.makeResumeHeaders(existingBytes: 0)
         #expect(h["Range"] == nil)
     }
+
+    @MainActor
+    @Test func isInstalledChecksFilesExistWithUnknownSize() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let desc = ModelDescriptor(id: "test_model", displayName: "T", files: [
+            ModelFile(url: URL(string: "https://example.com/x")!, relativePath: "x.bin", sha256: nil, sizeBytes: nil)
+        ])
+        let mgr = TestableModelManager(rootOverride: tmp)
+        // Файла ещё нет — isInstalled == false
+        #expect(mgr.isInstalled(desc) == false)
+
+        // Создать файл — isInstalled == true
+        let dest = tmp.appendingPathComponent("test_model").appendingPathComponent("x.bin")
+        try FileManager.default.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data([1,2,3]).write(to: dest)
+        #expect(mgr.isInstalled(desc) == true)
+    }
+}
+
+@MainActor
+final class TestableModelManager: ModelManager {
+    private let rootOverride: URL
+    init(rootOverride: URL) { self.rootOverride = rootOverride; super.init() }
+    override func modelDir(_ id: String) -> URL {
+        rootOverride.appendingPathComponent(id, isDirectory: true)
+    }
 }

@@ -3,6 +3,8 @@ import SwiftUI
 @MainActor
 final class OnboardingViewModel: ObservableObject {
     @Published var currentStep: Int = 1
+    @Published var modelReady: Bool = false
+    @Published var didExplicitlySkipModel: Bool = false
     let totalSteps = 7
 
     var stepTitle: String {
