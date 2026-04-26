@@ -2,6 +2,7 @@
 docs/
 plan.md
 .superpowers/
+.claude
 
 # macOS
 .DS_Store

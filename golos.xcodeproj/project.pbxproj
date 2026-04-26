@@ -1,0 +1,546 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		75F2A8642F9E420400D0515E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 75F2A84D2F9E420300D0515E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 75F2A8542F9E420300D0515E;
+			remoteInfo = golos;
+		};
+		75F2A86E2F9E420400D0515E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 75F2A84D2F9E420300D0515E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 75F2A8542F9E420300D0515E;
+			remoteInfo = golos;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		75F2A8552F9E420300D0515E /* golos.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = golos.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		75F2A8632F9E420400D0515E /* golosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = golosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		75F2A86D2F9E420400D0515E /* golosUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = golosUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		75F2A8572F9E420300D0515E /* golos */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = golos;
+			sourceTree = "<group>";
+		};
+		75F2A8662F9E420400D0515E /* golosTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = golosTests;
+			sourceTree = "<group>";
+		};
+		75F2A8702F9E420400D0515E /* golosUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = golosUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		75F2A8522F9E420300D0515E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75F2A8602F9E420400D0515E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75F2A86A2F9E420400D0515E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		75F2A84C2F9E420300D0515E = {
+			isa = PBXGroup;
+			children = (
+				75F2A8572F9E420300D0515E /* golos */,
+				75F2A8662F9E420400D0515E /* golosTests */,
+				75F2A8702F9E420400D0515E /* golosUITests */,
+				75F2A8562F9E420300D0515E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		75F2A8562F9E420300D0515E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				75F2A8552F9E420300D0515E /* golos.app */,
+				75F2A8632F9E420400D0515E /* golosTests.xctest */,
+				75F2A86D2F9E420400D0515E /* golosUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		75F2A8542F9E420300D0515E /* golos */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 75F2A8772F9E420400D0515E /* Build configuration list for PBXNativeTarget "golos" */;
+			buildPhases = (
+				75F2A8512F9E420300D0515E /* Sources */,
+				75F2A8522F9E420300D0515E /* Frameworks */,
+				75F2A8532F9E420300D0515E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				75F2A8572F9E420300D0515E /* golos */,
+			);
+			name = golos;
+			packageProductDependencies = (
+			);
+			productName = golos;
+			productReference = 75F2A8552F9E420300D0515E /* golos.app */;
+			productType = "com.apple.product-type.application";
+		};
+		75F2A8622F9E420400D0515E /* golosTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 75F2A87A2F9E420400D0515E /* Build configuration list for PBXNativeTarget "golosTests" */;
+			buildPhases = (
+				75F2A85F2F9E420400D0515E /* Sources */,
+				75F2A8602F9E420400D0515E /* Frameworks */,
+				75F2A8612F9E420400D0515E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				75F2A8652F9E420400D0515E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				75F2A8662F9E420400D0515E /* golosTests */,
+			);
+			name = golosTests;
+			packageProductDependencies = (
+			);
+			productName = golosTests;
+			productReference = 75F2A8632F9E420400D0515E /* golosTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		75F2A86C2F9E420400D0515E /* golosUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 75F2A87D2F9E420400D0515E /* Build configuration list for PBXNativeTarget "golosUITests" */;
+			buildPhases = (
+				75F2A8692F9E420400D0515E /* Sources */,
+				75F2A86A2F9E420400D0515E /* Frameworks */,
+				75F2A86B2F9E420400D0515E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				75F2A86F2F9E420400D0515E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				75F2A8702F9E420400D0515E /* golosUITests */,
+			);
+			name = golosUITests;
+			packageProductDependencies = (
+			);
+			productName = golosUITests;
+			productReference = 75F2A86D2F9E420400D0515E /* golosUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		75F2A84D2F9E420300D0515E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1630;
+				LastUpgradeCheck = 1630;
+				TargetAttributes = {
+					75F2A8542F9E420300D0515E = {
+						CreatedOnToolsVersion = 16.3;
+					};
+					75F2A8622F9E420400D0515E = {
+						CreatedOnToolsVersion = 16.3;
+						TestTargetID = 75F2A8542F9E420300D0515E;
+					};
+					75F2A86C2F9E420400D0515E = {
+						CreatedOnToolsVersion = 16.3;
+						TestTargetID = 75F2A8542F9E420300D0515E;
+					};
+				};
+			};
+			buildConfigurationList = 75F2A8502F9E420300D0515E /* Build configuration list for PBXProject "golos" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 75F2A84C2F9E420300D0515E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 75F2A8562F9E420300D0515E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				75F2A8542F9E420300D0515E /* golos */,
+				75F2A8622F9E420400D0515E /* golosTests */,
+				75F2A86C2F9E420400D0515E /* golosUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		75F2A8532F9E420300D0515E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75F2A8612F9E420400D0515E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75F2A86B2F9E420400D0515E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		75F2A8512F9E420300D0515E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75F2A85F2F9E420400D0515E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75F2A8692F9E420400D0515E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		75F2A8652F9E420400D0515E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 75F2A8542F9E420300D0515E /* golos */;
+			targetProxy = 75F2A8642F9E420400D0515E /* PBXContainerItemProxy */;
+		};
+		75F2A86F2F9E420400D0515E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 75F2A8542F9E420300D0515E /* golos */;
+			targetProxy = 75F2A86E2F9E420400D0515E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		75F2A8752F9E420400D0515E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		75F2A8762F9E420400D0515E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		75F2A8782F9E420400D0515E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = golos/golos.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.golos-app.golos";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		75F2A8792F9E420400D0515E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = golos/golos.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.golos-app.golos";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		75F2A87B2F9E420400D0515E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.golos-app.golosTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/golos.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/golos";
+			};
+			name = Debug;
+		};
+		75F2A87C2F9E420400D0515E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.golos-app.golosTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/golos.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/golos";
+			};
+			name = Release;
+		};
+		75F2A87E2F9E420400D0515E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.golos-app.golosUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = golos;
+			};
+			name = Debug;
+		};
+		75F2A87F2F9E420400D0515E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.golos-app.golosUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = golos;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		75F2A8502F9E420300D0515E /* Build configuration list for PBXProject "golos" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				75F2A8752F9E420400D0515E /* Debug */,
+				75F2A8762F9E420400D0515E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		75F2A8772F9E420400D0515E /* Build configuration list for PBXNativeTarget "golos" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				75F2A8782F9E420400D0515E /* Debug */,
+				75F2A8792F9E420400D0515E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		75F2A87A2F9E420400D0515E /* Build configuration list for PBXNativeTarget "golosTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				75F2A87B2F9E420400D0515E /* Debug */,
+				75F2A87C2F9E420400D0515E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		75F2A87D2F9E420400D0515E /* Build configuration list for PBXNativeTarget "golosUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				75F2A87E2F9E420400D0515E /* Debug */,
+				75F2A87F2F9E420400D0515E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 75F2A84D2F9E420300D0515E /* Project object */;
+}
