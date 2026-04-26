@@ -193,6 +193,7 @@
 			knownRegions = (
 				en,
 				Base,
+				ru,
 			);
 			mainGroup = 75F2A84C2F9E420300D0515E;
 			minimizedProjectReferenceProxies = 1;
@@ -231,7 +232,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
 
 /* Begin PBXShellScriptBuildPhase section */
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* Copy golos-asr sidecar */ = {

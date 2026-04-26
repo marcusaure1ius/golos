@@ -1,0 +1,10 @@
+"pill.listening" = "слушаю…";
+"pill.transcribing" = "расшифровываю";
+"pill.toggle.stop" = "двойной ⌥ — стоп";
+"pill.error" = "не получилось";
+
+"notif.clipboard.title" = "Транскрипт скопирован";
+"notif.clipboard.body" = "Курсор не на текстовом поле — текст в буфере обмена";
+"notif.mic.unavailable" = "Не удалось получить доступ к микрофону";
+"notif.transcribe.timeout" = "Транскрипция заняла слишком долго";
+"notif.model.notLoaded" = "Модель не загружена";
