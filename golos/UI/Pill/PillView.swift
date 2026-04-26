@@ -26,76 +26,176 @@ final class PillViewModel: ObservableObject {
 struct PillView: View {
     @ObservedObject var vm: PillViewModel
     @State private var spinAngle: Double = 0
+    @State private var pulseScale: CGFloat = 1
+    @State private var pulseOpacity: Double = 0.7
+    @State private var dotPhase: Int = 0
+
+    private static let dotTimer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        HStack(spacing: 14) {
-            indicator
-            waveform
-            hint
+        // Внешний фрейм с запасом — чтобы .shadow() не обрезался границами NSPanel.
+        ZStack {
+            HStack(spacing: 12) {
+                indicator
+                center
+                hint
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(
+                LinearGradient(colors: [
+                    Color.white.opacity(isError ? 0.12 : 0.22),
+                    Color.white.opacity(isError ? 0.04 : 0.08),
+                ], startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.white.opacity(isError ? 0.30 : 0.22), lineWidth: 1))
+            .background(.ultraThinMaterial, in: Capsule())
+            .shadow(color: .black.opacity(0.45), radius: 20, x: 0, y: 12)
+            .frame(width: 300, height: 52)
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 12)
-        .background(
-            LinearGradient(colors: [
-                Color.white.opacity(isError ? 0.12 : 0.22),
-                Color.white.opacity(isError ? 0.04 : 0.08),
-            ], startPoint: .topLeading, endPoint: .bottomTrailing)
-        )
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(Color.white.opacity(isError ? 0.30 : 0.22), lineWidth: 1))
-        .background(.ultraThinMaterial, in: Capsule())
-        .shadow(color: .black.opacity(0.45), radius: 20, x: 0, y: 12)
-        .frame(width: 240, height: 48)
+        .frame(width: 360, height: 96)
     }
+
+    // MARK: - State helpers
 
     private var isError: Bool {
         if case .error = vm.state { return true }
         return false
     }
 
+    private var isToggle: Bool {
+        if case .recording(.toggle) = vm.state { return true }
+        return false
+    }
+
+    private var isTranscribing: Bool {
+        vm.state == .transcribing
+    }
+
+    // MARK: - Indicator (mic / error icon + halo)
+
     @ViewBuilder
     private var indicator: some View {
         ZStack {
-            Image(systemName: "mic.fill")
-                .font(.system(size: 12))
-                .foregroundColor(.white)
-                .frame(width: 22, height: 22)
-            Circle()
-                .trim(from: 0, to: 0.75)
-                .stroke(Color.white.opacity(0.95), lineWidth: 1.5)
-                .frame(width: 22, height: 22)
-                .rotationEffect(.degrees(spinAngle))
-                .onAppear { startSpin() }
-                .onChange(of: vm.state) { _, _ in startSpin() }
+            // Иконка
+            Image(systemName: isError ? "exclamationmark.circle.fill" : "mic.fill")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(isError ? Color(red: 1.0, green: 0.8, blue: 0.8) : .white)
+
+            if !isError {
+                // Halo: 3/4 окружности, крутится; в transcribing — быстрее.
+                Circle()
+                    .trim(from: 0, to: 0.75)
+                    .stroke(Color.white.opacity(0.95), lineWidth: 1.5)
+                    .rotationEffect(.degrees(spinAngle))
+                    .onAppear { startSpin() }
+                    .onChange(of: vm.state) { _, _ in startSpin() }
+
+                // Toggle-режим: дополнительное "дышащее" кольцо вокруг halo.
+                if isToggle {
+                    Circle()
+                        .stroke(Color.white.opacity(pulseOpacity), lineWidth: 1.5)
+                        .scaleEffect(pulseScale)
+                        .onAppear { startPulse() }
+                }
+            }
         }
+        .frame(width: 22, height: 22)
     }
 
     private func startSpin() {
-        let speed: Double = (vm.state == .transcribing) ? 0.6 : 1.4
+        let speed: Double = isTranscribing ? 0.6 : 1.4
         spinAngle = 0
         withAnimation(.linear(duration: speed).repeatForever(autoreverses: false)) {
             spinAngle = 360
         }
     }
 
+    private func startPulse() {
+        pulseScale = 1
+        pulseOpacity = 0.7
+        withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+            pulseScale = 1.18
+            pulseOpacity = 0.35
+        }
+    }
+
+    // MARK: - Center: waveform / dots / error line
+
+    @ViewBuilder
+    private var center: some View {
+        switch vm.state {
+        case .recording:
+            waveform
+        case .transcribing:
+            dots
+        case .error:
+            errorLine
+        }
+    }
+
+    /// 50 баров RMS истории. Контейнер 130pt, бары 1.5pt + gap 1pt = ~125pt.
+    /// Высота: sqrt(rms) — даёт больше визуальной динамики для тихих микрофонов
+    /// (типичный input даёт RMS 0.01-0.05, линейная шкала превращала бы в 1px точки).
     @ViewBuilder
     private var waveform: some View {
-        HStack(alignment: .center, spacing: 2) {
+        HStack(alignment: .center, spacing: 1) {
             ForEach(Array(vm.history.enumerated()), id: \.offset) { idx, v in
                 Capsule()
                     .fill(Color.white.opacity(0.3 + 0.7 * Double(idx) / Double(vm.history.count - 1)))
-                    .frame(width: 2, height: max(2, CGFloat(v) * 28))
+                    .frame(width: 1.5, height: barHeight(rms: v))
             }
         }
-        .frame(height: 28)
+        .frame(width: 130, height: 28)
+        .clipped()
     }
+
+    private func barHeight(rms: Float) -> CGFloat {
+        // sqrt-scale: rms=0.01 → 0.1 (~3px), rms=0.05 → 0.22 (~6px), rms=0.2 → 0.45 (~13px),
+        // rms=0.5 → 0.71 (~20px). Clamp в [1.5, 28].
+        let scaled = sqrt(max(0, Double(rms)))
+        return max(1.5, min(28, CGFloat(scaled) * 28))
+    }
+
+    /// 3 пульсирующие точки для transcribing.
+    @ViewBuilder
+    private var dots: some View {
+        HStack(spacing: 5) {
+            ForEach(0..<3, id: \.self) { i in
+                Circle()
+                    .fill(Color.white.opacity(0.95))
+                    .frame(width: 6, height: 6)
+                    .scaleEffect(dotPhase == i ? 1.1 : 0.8)
+                    .opacity(dotPhase == i ? 1.0 : 0.3)
+            }
+        }
+        .frame(width: 130, height: 28)
+        .onReceive(Self.dotTimer) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                dotPhase = (dotPhase + 1) % 3
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var errorLine: some View {
+        Text(L10n.pillError)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundColor(Color(red: 1.0, green: 0.67, blue: 0.67))
+            .frame(width: 130, height: 28)
+    }
+
+    // MARK: - Hint
 
     @ViewBuilder
     private var hint: some View {
         Text(hintText)
-            .font(.system(size: 12))
-            .foregroundColor(.white.opacity(isError ? 0.95 : 0.85))
+            .font(.system(size: 11))
+            .foregroundColor(hintColor)
             .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var hintText: String {
@@ -104,6 +204,14 @@ struct PillView: View {
         case .recording(.toggle): return L10n.pillToggleStop
         case .transcribing: return L10n.pillTranscribing
         case .error(let m): return m.isEmpty ? L10n.pillError : m
+        }
+    }
+
+    private var hintColor: Color {
+        switch vm.state {
+        case .recording(.toggle): return Color(red: 1.0, green: 0.82, blue: 0.48)  // тёплый жёлтый
+        case .error: return Color(red: 1.0, green: 0.67, blue: 0.67)
+        default: return .white.opacity(0.85)
         }
     }
 }

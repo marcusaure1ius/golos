@@ -23,8 +23,9 @@ final class PillWindow {
 
     private func makeWindow() -> NSPanel {
         let host = NSHostingController(rootView: PillView(vm: viewModel))
+        // Окно больше самой пилюли — чтобы shadow не обрезался границами NSPanel.
         let w = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 240, height: 48),
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 96),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
