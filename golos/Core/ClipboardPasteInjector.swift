@@ -39,17 +39,26 @@ final class ClipboardPasteInjector: TextInjector {
     func inject(text: String) async -> InjectionOutcome {
         guard !text.isEmpty else { return .injected }
 
-        // 1. Try AX direct text insertion — no clipboard needed.
+        // 1. Try AX direct text insertion — без clipboard, идеально для нативных
+        //    NSTextField/NSTextView (Chrome address bar, Notes, и т.п.).
         if tryAXInsertion(text: text) {
             Log.injection.info("AX insertion succeeded")
             return .injected
         }
 
-        // 2. Fallback: clipboard paste via Cmd+V.
-        let isText = isFocusedElementTextual()
+        // 2. Fallback: clipboard paste via Cmd+V. Делаем безусловно — для Electron-based
+        //    приложений (VS Code, Slack, Discord, Cursor) AX-чтение фокуса возвращает
+        //    nothing/AXGroup, но Cmd+V работает корректно. Если фокус не на text input —
+        //    юзер сам прервёт; clipboard-only fallback оставлял текст потерянным даже
+        //    в обычных IDE.
+        if shouldSkipPaste() {
+            // Не вставляем в Finder и подобные апп, где Cmd+V имеет иной смысл.
+            Log.injection.info("paste skipped — front app in skip list")
+            return .copiedToClipboard
+        }
+
         let pb = NSPasteboard.general
         let snapshot = ClipboardSnapshot.capture(pb)
-        let initialCount = pb.changeCount
 
         pb.clearContents()
         let item = NSPasteboardItem()
@@ -58,19 +67,27 @@ final class ClipboardPasteInjector: TextInjector {
         item.setString("", forType: NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType"))
         pb.writeObjects([item])
 
-        if isText {
-            postCmdV()
-            // Wait for the front app to read the pasteboard before we restore it.
-            await Self.waitForPasteAcknowledgement(timeout: 0.25)
-            snapshot.restore(to: pb)
-            Log.injection.info("paste injected")
-            return .injected
-        } else {
-            Log.injection.info("focus is not textual — left in clipboard")
-            // Не восстанавливаем — пользователь увидит наш текст, как просил.
-            _ = initialCount  // suppress unused warning
-            return .copiedToClipboard
-        }
+        postCmdV()
+        // Wait for the front app to read the pasteboard before we restore it.
+        await Self.waitForPasteAcknowledgement(timeout: 0.25)
+        snapshot.restore(to: pb)
+        Log.injection.info("paste injected via Cmd+V")
+        return .injected
+    }
+
+    /// Вернуть true если frontmost app — Finder и т.п., где Cmd+V не должен делать paste текста.
+    @MainActor
+    private func shouldSkipPaste() -> Bool {
+        let bundleId = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? ""
+        let skip: Set<String> = [
+            "com.apple.finder",
+            "com.apple.dock",
+            "com.apple.SystemUIServer",
+            "com.apple.controlcenter",
+            "com.apple.Spotlight",
+            "com.golos-app.golos",  // мы сами
+        ]
+        return skip.contains(bundleId)
     }
 
     // MARK: - AX insertion
@@ -116,31 +133,6 @@ final class ClipboardPasteInjector: TextInjector {
     }
 
     // MARK: - Helpers
-
-    @MainActor
-    private func isFocusedElementTextual() -> Bool {
-        let systemWide = AXUIElementCreateSystemWide()
-        var focused: CFTypeRef?
-        let status = AXUIElementCopyAttributeValue(
-            systemWide, kAXFocusedUIElementAttribute as CFString, &focused
-        )
-        guard status == .success, let element = focused else { return false }
-
-        var roleValue: CFTypeRef?
-        AXUIElementCopyAttributeValue(
-            element as! AXUIElement,
-            kAXRoleAttribute as CFString, &roleValue
-        )
-        guard let role = roleValue as? String else { return false }
-        let textualRoles: Set<String> = [
-            kAXTextFieldRole as String,
-            kAXTextAreaRole as String,
-            "AXWebArea",
-            "AXComboBox",
-            "AXSearchField",
-        ]
-        return textualRoles.contains(role)
-    }
 
     private func postCmdV() {
         let src = CGEventSource(stateID: .combinedSessionState)
