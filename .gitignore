@@ -1,0 +1,45 @@
+# Локальная рабочая документация и роадмап
+docs/
+plan.md
+.superpowers/
+
+# macOS
+.DS_Store
+*.swp
+
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Package.resolved
+
+# Rust (sidecar)
+target/
+Cargo.lock
+
+# Models — большие, скачиваются на машине пользователя
+models/
+*.onnx
+
+# Локальные секреты
+.env
+.env.local
+*.p12
+*.cer
+AuthKey_*.p8
+
+# CocoaPods (на всякий случай)
+Pods/
+
+# fastlane / CI артефакты
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
