@@ -1,0 +1,192 @@
+import Foundation
+import CryptoKit
+
+/// Состояние одной загрузки.
+struct ModelDownloadProgress: Equatable {
+    let bytesDownloaded: Int64
+    let bytesTotal: Int64
+    var fraction: Double {
+        guard bytesTotal > 0 else { return 0 }
+        return Double(bytesDownloaded) / Double(bytesTotal)
+    }
+}
+
+/// Описание одной модели (несколько файлов в одном bundle).
+struct ModelDescriptor {
+    let id: String              // "e2e_rnnt" или "e2e_ctc"
+    let displayName: String     // "Качество" / "Скорость"
+    let files: [ModelFile]      // model.onnx, vocab.txt, ...
+}
+
+struct ModelFile {
+    let url: URL
+    let relativePath: String
+    let sha256: String?         // optional verification
+    let sizeBytes: Int64
+}
+
+@MainActor
+final class ModelManager: ObservableObject {
+    @Published private(set) var progress: ModelDownloadProgress?
+    @Published private(set) var error: String?
+
+    /// Каталог конкретной модели.
+    func modelDir(_ id: String) -> URL {
+        AppPaths.modelDir(id)
+    }
+
+    /// Установлена ли модель локально (все файлы существуют, размеры совпадают).
+    func isInstalled(_ desc: ModelDescriptor) -> Bool {
+        let dir = modelDir(desc.id)
+        for f in desc.files {
+            let path = dir.appendingPathComponent(f.relativePath)
+            guard let attr = try? FileManager.default.attributesOfItem(atPath: path.path),
+                  let size = attr[.size] as? Int64,
+                  size == f.sizeBytes else { return false }
+        }
+        return true
+    }
+
+    func download(_ desc: ModelDescriptor) async throws {
+        let dir = modelDir(desc.id)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        let totalBytes = desc.files.map(\.sizeBytes).reduce(0, +)
+        var downloaded: Int64 = 0
+        progress = ModelDownloadProgress(bytesDownloaded: 0, bytesTotal: totalBytes)
+
+        for f in desc.files {
+            let dest = dir.appendingPathComponent(f.relativePath)
+            try await downloadFile(f, to: dest, onChunk: { chunkSize in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    let total = self.progress?.bytesTotal ?? totalBytes
+                    let new = (self.progress?.bytesDownloaded ?? downloaded) + Int64(chunkSize)
+                    self.progress = .init(bytesDownloaded: new, bytesTotal: total)
+                }
+            })
+            downloaded += f.sizeBytes
+        }
+        progress = .init(bytesDownloaded: totalBytes, bytesTotal: totalBytes)
+    }
+
+    private func downloadFile(_ file: ModelFile, to dest: URL, onChunk: @escaping (Int) -> Void) async throws {
+        let existing = (try? FileManager.default.attributesOfItem(atPath: dest.path)[.size] as? Int64) ?? 0
+        if existing == file.sizeBytes {
+            // Уже скачано полностью.
+            return
+        }
+
+        var req = URLRequest(url: file.url)
+        for (k, v) in Self.makeResumeHeaders(existingBytes: existing) {
+            req.setValue(v, forHTTPHeaderField: k)
+        }
+
+        let (asyncBytes, response) = try await URLSession.shared.bytes(for: req)
+        guard let http = response as? HTTPURLResponse else {
+            throw NSError(domain: "ModelManager", code: -1)
+        }
+        guard http.statusCode == 200 || http.statusCode == 206 else {
+            throw NSError(domain: "ModelManager", code: http.statusCode,
+                          userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode)"])
+        }
+
+        let appending = (http.statusCode == 206)
+        if !appending {
+            FileManager.default.createFile(atPath: dest.path, contents: nil)
+        } else if !FileManager.default.fileExists(atPath: dest.path) {
+            FileManager.default.createFile(atPath: dest.path, contents: nil)
+        }
+        let handle = try FileHandle(forWritingTo: dest)
+        if appending { try handle.seekToEnd() }
+        defer { try? handle.close() }
+
+        var hasher = SHA256()
+        var buffer = Data(capacity: 8 * 1024)
+        for try await byte in asyncBytes {
+            buffer.append(byte)
+            if buffer.count >= 64 * 1024 {
+                try handle.write(contentsOf: buffer)
+                hasher.update(data: buffer)
+                onChunk(buffer.count)
+                buffer.removeAll(keepingCapacity: true)
+            }
+        }
+        if !buffer.isEmpty {
+            try handle.write(contentsOf: buffer)
+            hasher.update(data: buffer)
+            onChunk(buffer.count)
+        }
+
+        if let expected = file.sha256 {
+            // SHA проверка корректна только при полной (не resume) загрузке.
+            if existing == 0 {
+                let got = Self.bytesToHex(Data(hasher.finalize()))
+                if got != expected {
+                    try? FileManager.default.removeItem(at: dest)
+                    throw NSError(domain: "ModelManager", code: -2,
+                                  userInfo: [NSLocalizedDescriptionKey: "sha256 mismatch: \(got) vs \(expected)"])
+                }
+            }
+        }
+    }
+
+    nonisolated static func sha256Hex(_ data: Data) -> String {
+        let digest = SHA256.hash(data: data)
+        return bytesToHex(Data(digest))
+    }
+
+    nonisolated static func bytesToHex(_ data: Data) -> String {
+        data.map { String(format: "%02x", $0) }.joined()
+    }
+
+    nonisolated static func makeResumeHeaders(existingBytes: Int64) -> [String: String] {
+        guard existingBytes > 0 else { return [:] }
+        return ["Range": "bytes=\(existingBytes)-"]
+    }
+}
+
+// MARK: Конкретные модели GigaAM-v3
+
+extension ModelDescriptor {
+    /// e2e_rnnt — режим «Качество». URL'ы и точные sha256/sizes уточнить
+    /// в момент имплементации (см. plan.md, open question #1).
+    static let gigaamRnnt = ModelDescriptor(
+        id: "e2e_rnnt",
+        displayName: "Качество",
+        files: [
+            // TODO(plan.md OQ1): подтвердить URL'ы и заполнить sizeBytes из HEAD-запросов перед публикацией.
+            ModelFile(
+                url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-rnnt/model.onnx")!,
+                relativePath: "model.onnx",
+                sha256: nil,
+                sizeBytes: 0
+            ),
+            ModelFile(
+                url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-rnnt/vocab.txt")!,
+                relativePath: "vocab.txt",
+                sha256: nil,
+                sizeBytes: 0
+            ),
+        ]
+    )
+
+    static let gigaamCtc = ModelDescriptor(
+        id: "e2e_ctc",
+        displayName: "Скорость",
+        files: [
+            ModelFile(
+                url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-ctc/model.onnx")!,
+                relativePath: "model.onnx",
+                sha256: nil,
+                sizeBytes: 0
+            ),
+            ModelFile(
+                url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-ctc/vocab.txt")!,
+                relativePath: "vocab.txt",
+                sha256: nil,
+                sizeBytes: 0
+            ),
+        ]
+    )
+}
