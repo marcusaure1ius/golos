@@ -13,9 +13,11 @@ Swift app + Rust sidecar.
   - `Core/SidecarProtocol.swift` — JSON-lines протокол со sidecar (request_id, samples_total handshake).
   - `UI/` — Menu bar, Pill (recording overlay), Settings, Onboarding.
   - `Util/` — `Logger` (`os.Logger` subsystem `com.golos.app`), `Permissions`, `AppPaths`, `AudioDevices`.
-- **Rust sidecar** (`golos-asr/`) — ONNX inference. Получает control сообщения по stdin (JSON-lines), PCM (Int16 LE 16kHz mono) по отдельному audio-fd pipe, отвечает по stdout.
+- **Rust sidecar** (`golos-asr/`) — ONNX inference. Получает control сообщения по stdin (JSON-lines), PCM (Int16 LE 16kHz mono) по named FIFO (`--audio-path`), отвечает по stdout.
 
 IPC handshake: Hello → Load{model_path} → Ready → BeginSession → feed PCM → EndSession{samples_total} → Final{text}.
+
+Запрос-ответ через `LocalGigaAMProvider.roundtrip()` (id → `correlator.expect()` → send → `correlator.await()`). expect/early-bucket в `ResponseCorrelator` нужен потому что sidecar может ответить за микросекунды, ДО того как caller успел зарегистрировать continuation — без этого Final дропался.
 
 ## Code conventions
 
@@ -32,6 +34,15 @@ IPC handshake: Hello → Load{model_path} → Ready → BeginSession → feed PC
 - Подсчёт тестов: `xcodebuild test ... > /tmp/log; grep -c "passed on" /tmp/log` — `| tail` обрезает Rust'овые `test result:` строки.
 - **Sidecar пересобирается отдельно**: `PATH=/Users/alfa/.cargo/bin:$PATH bash golos-asr/scripts/build-universal.sh`. `xcodebuild` сам не запускает cargo — `Scripts/copy-sidecar.sh` копирует уже-собранный бинарь. Если изменился `golos-asr/src/*.rs` — сначала собрать Rust, потом app.
 - Build app: `xcodebuild build -project golos.xcodeproj -scheme golos -configuration Debug -destination 'platform=macOS' -derivedDataPath /tmp/golos-fix`.
+
+## macOS audio/IPC gotchas
+
+Невидимые ловушки macOS API которые молча ломают pipeline. Если трогаешь IPC/audio — учитывай:
+
+1. **Audio через named FIFO, НЕ через fd inheritance.** `Process` (NSTask) на macOS использует `posix_spawn` с `POSIX_SPAWN_CLOEXEC_DEFAULT` — все fd кроме 0/1/2 закрываются в child даже после `fcntl(F_SETFD, ~FD_CLOEXEC)` в parent'е. Process не даёт `addinherit_np`. Поэтому передача audio fd через argv не работает (sidecar получает EBADF). Решение в коде: `mkfifo()` + `--audio-path`.
+2. **`AVAudioConverter` callback возвращает `.noDataNow`, НЕ `.endOfStream`** когда input для текущего вызова исчерпан. `.endOfStream` отключает converter навсегда — последующие tap-buffer'ы не процессятся, в sidecar улетает только первый chunk.
+3. **`setVoiceProcessingEnabled` блокирует MainActor 2-3s на первом вызове.** Прогревать через `AudioCapture.prewarm()` после warmup модели — иначе первое нажатие хоткея пропустит реальное аудио пока engine стартует.
+4. **State-machine race в `DictationCoordinator.startRecording`**: если user отпускает хоткей пока beginSession Task в полёте, state .preparing → .idle (cancel-path), а вернувшийся beginSession не должен перезаписывать поверх. Внутри Task'а каждое state transition обёрнуто в `if case .preparing`.
 
 ## Behavioral reminders
 
