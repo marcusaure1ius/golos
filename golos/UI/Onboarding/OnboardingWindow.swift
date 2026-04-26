@@ -3,6 +3,18 @@ import SwiftUI
 struct OnboardingRoot: View {
     @StateObject var vm = OnboardingViewModel()
     @ObservedObject var settings: AppSettings = .shared
+    @State private var showSkipConfirm = false
+
+    private var skipMessage: String {
+        switch vm.currentStep {
+        case 5: return "Модель не выбрана — диктовка не заработает до установки модели."
+        case 2: return "Без доступа к микрофону диктовка не заработает."
+        case 3: return "Без Универсального доступа вставка текста будет ограничена."
+        case 4: return "Без Input Monitoring горячие клавиши не будут работать."
+        default: return "Ты сможешь вернуться к настройке позже через Настройки."
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 8) {
@@ -37,10 +49,25 @@ struct OnboardingRoot: View {
                     .buttonStyle(.borderless)
                     .disabled(vm.currentStep == 1)
                 Spacer()
-                Button("Пропустить") { close() }
+                Button("Пропустить") { showSkipConfirm = true }
                     .buttonStyle(.borderless)
+                    .alert("Пропустить настройку?", isPresented: $showSkipConfirm) {
+                        Button("Продолжить настройку", role: .cancel) {}
+                        Button("Закрыть и настроить позже", role: .destructive) {
+                            settings.onboardingSkipped = true
+                            vm.didExplicitlySkipModel = true
+                            close()
+                        }
+                    } message: {
+                        Text(skipMessage)
+                    }
                 Button(vm.currentStep == vm.totalSteps ? "Готово" : "Дальше") {
-                    if vm.currentStep == vm.totalSteps { close() } else { vm.next() }
+                    if vm.currentStep == vm.totalSteps {
+                        settings.onboardingCompleted = true
+                        close()
+                    } else {
+                        vm.next()
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(vm.currentStep == 5 && !vm.modelReady && !vm.didExplicitlySkipModel)
@@ -52,7 +79,9 @@ struct OnboardingRoot: View {
     }
 
     private func close() {
-        settings.firstRun = false
+        if vm.currentStep == vm.totalSteps || settings.onboardingSkipped {
+            settings.firstRun = false
+        }
         NSApp.keyWindow?.close()
     }
 }

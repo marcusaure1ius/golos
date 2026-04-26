@@ -56,11 +56,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             w.setContentSize(NSSize(width: 580, height: 580))
             w.center()
             w.isReleasedWhenClosed = false
-            // По закрытию — больше не считаем это первым запуском.
-            NotificationCenter.default.addObserver(
-                forName: NSWindow.willCloseNotification,
-                object: w, queue: .main
-            ) { _ in AppSettings.shared.firstRun = false }
             onboardingWindow = w
         }
         onboardingWindow?.makeKeyAndOrderFront(nil)

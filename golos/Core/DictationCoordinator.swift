@@ -29,6 +29,12 @@ final class DictationCoordinator: ObservableObject {
         try await provider.start(modelDir: modelDir)
     }
 
+    /// Немедленно возвращает координатор в .idle и отменяет текущий provider.
+    func cancelToIdle() {
+        state = .idle
+        Task { await provider.cancel() }
+    }
+
     /// Шлёт PCM-сэмплы в провайдер во время recording или preparing.
     func feed(samples: Data) {
         switch state {

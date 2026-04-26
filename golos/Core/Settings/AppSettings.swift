@@ -26,6 +26,8 @@ final class AppSettings: ObservableObject {
     @AppStorage("history.retentionDays") var historyRetentionDays: Int = 30
     @AppStorage("privacy.diagnostics")   var diagnostics: Bool = false
     @AppStorage("ui.firstRun")           var firstRun: Bool = true
+    @AppStorage("ui.onboardingSkipped")  var onboardingSkipped: Bool = false
+    @AppStorage("ui.onboardingCompleted") var onboardingCompleted: Bool = false
 
     private init() {}
 }

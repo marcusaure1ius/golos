@@ -13,6 +13,8 @@ final class AppCoordinator: ObservableObject {
     var hotkeys: HotkeyManager?
     var menuBar: MenuBarController?
 
+    @Published private(set) var permissionIssue: String?
+
     private var didStart = false
 
     init() {
@@ -48,6 +50,7 @@ final class AppCoordinator: ObservableObject {
             self.hotkeys = hm
         } catch {
             Log.coordinator.error("hotkeys start failed: \(error.localizedDescription, privacy: .public)")
+            permissionIssue = "Хоткеи отключены: \(error.localizedDescription). Открыть System Settings → Input Monitoring."
         }
 
         // Audio samples → coordinator
@@ -107,6 +110,8 @@ final class AppCoordinator: ObservableObject {
         case .preparing(let mode):
             do { try audio.start() } catch {
                 Log.coordinator.error("audio start failed: \(error.localizedDescription, privacy: .public)")
+                permissionIssue = "Микрофон недоступен: \(error.localizedDescription). Открыть System Settings → Конфиденциальность → Микрофон."
+                dictation.cancelToIdle()
             }
             pill.viewModel.state = .recording(mode: mode)
             pill.show()
@@ -114,6 +119,8 @@ final class AppCoordinator: ObservableObject {
         case .recording(let mode, _):
             do { try audio.start() } catch {
                 Log.coordinator.error("audio start failed: \(error.localizedDescription, privacy: .public)")
+                permissionIssue = "Микрофон недоступен: \(error.localizedDescription). Открыть System Settings → Конфиденциальность → Микрофон."
+                dictation.cancelToIdle()
             }
             pill.viewModel.state = .recording(mode: mode)
             pill.show()
