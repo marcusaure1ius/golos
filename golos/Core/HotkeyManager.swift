@@ -74,7 +74,7 @@ struct HotkeyPatternDetector {
 /// Слушает Right Option (kVK_RightOption = 0x3D) по умолчанию, не трогает левый.
 @MainActor
 final class HotkeyManager {
-    private var eventTap: CFMachPort?
+    fileprivate nonisolated(unsafe) var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var detector: HotkeyPatternDetector
     private let onEvent: (HotkeyEvent) -> Void
@@ -109,6 +109,8 @@ final class HotkeyManager {
     func start() throws {
         Log.hotkeys.info("perms — mic: \(String(describing: Permissions.microphoneStatus().rawValue), privacy: .public), ax: \(Permissions.accessibilityGranted(), privacy: .public), input: \(Permissions.inputMonitoringGranted(), privacy: .public)")
         let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
+            | (1 << CGEventType.tapDisabledByTimeout.rawValue)
+            | (1 << CGEventType.tapDisabledByUserInput.rawValue)
         let info = Unmanaged.passUnretained(self).toOpaque()
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -170,6 +172,12 @@ final class HotkeyManager {
 private let hotkeyCallback: CGEventTapCallBack = { _, type, event, refcon in
     guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
     let manager = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
+    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+        if let tap = manager.eventTap {
+            CGEvent.tapEnable(tap: tap, enable: true)
+        }
+        return nil
+    }
     guard type == .flagsChanged else { return Unmanaged.passUnretained(event) }
     let keycode = event.getIntegerValueField(.keyboardEventKeycode)
     // Для flagsChanged: модификатор «нажат», если соответствующий flag установлен.

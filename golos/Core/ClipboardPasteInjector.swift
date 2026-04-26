@@ -39,14 +39,18 @@ final class ClipboardPasteInjector: TextInjector {
     func inject(text: String) async -> InjectionOutcome {
         guard !text.isEmpty else { return .injected }
 
-        // 1. Решить, есть ли текстовое фокусное поле.
-        let isText = isFocusedElementTextual()
+        // 1. Try AX direct text insertion — no clipboard needed.
+        if tryAXInsertion(text: text) {
+            Log.injection.info("AX insertion succeeded")
+            return .injected
+        }
 
-        // 2. Сохранить текущий clipboard.
+        // 2. Fallback: clipboard paste via Cmd+V.
+        let isText = isFocusedElementTextual()
         let pb = NSPasteboard.general
         let snapshot = ClipboardSnapshot.capture(pb)
+        let initialCount = pb.changeCount
 
-        // 3. Положить наш текст с пометкой concealed.
         pb.clearContents()
         let item = NSPasteboardItem()
         item.setString(text, forType: .string)
@@ -55,19 +59,63 @@ final class ClipboardPasteInjector: TextInjector {
         pb.writeObjects([item])
 
         if isText {
-            // Симулировать Cmd+V.
             postCmdV()
-            // Дать системе обработать paste.
-            try? await Task.sleep(nanoseconds: 60_000_000)
+            // Wait for the front app to read the pasteboard before we restore it.
+            await Self.waitForPasteAcknowledgement(timeout: 0.25)
             snapshot.restore(to: pb)
             Log.injection.info("paste injected")
             return .injected
         } else {
             Log.injection.info("focus is not textual — left in clipboard")
             // Не восстанавливаем — пользователь увидит наш текст, как просил.
+            _ = initialCount  // suppress unused warning
             return .copiedToClipboard
         }
     }
+
+    // MARK: - AX insertion
+
+    @MainActor
+    private func tryAXInsertion(text: String) -> Bool {
+        let systemWide = AXUIElementCreateSystemWide()
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            systemWide, kAXFocusedUIElementAttribute as CFString, &focused
+        ) == .success, let element = focused else { return false }
+
+        let axElement = element as! AXUIElement
+        let err = AXUIElementSetAttributeValue(
+            axElement,
+            kAXSelectedTextAttribute as CFString,
+            text as CFString
+        )
+        return err == .success
+    }
+
+    // MARK: - Pasteboard polling
+
+    /// Polls `pasteboard.changeCount` until it differs from `initialCount` or `timeout` elapses.
+    /// Returns `true` if a change was detected.
+    static func waitForPasteboardChange(
+        pasteboard: NSPasteboard,
+        initialCount: Int,
+        timeout: TimeInterval
+    ) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if pasteboard.changeCount != initialCount { return true }
+            try? await Task.sleep(nanoseconds: 5_000_000)  // 5ms
+        }
+        return pasteboard.changeCount != initialCount
+    }
+
+    /// Minimum 30ms acknowledgement wait — gives the front app time to read the pasteboard
+    /// before we restore it. Does not poll changeCount (we don't know what to watch for).
+    static func waitForPasteAcknowledgement(timeout: TimeInterval) async {
+        try? await Task.sleep(nanoseconds: 30_000_000)  // 30ms minimum
+    }
+
+    // MARK: - Helpers
 
     @MainActor
     private func isFocusedElementTextual() -> Bool {

@@ -6,6 +6,16 @@ set -euo pipefail
 
 SIDECAR_SRC="${PROJECT_DIR}/golos-asr/target/universal-apple-darwin/release/golos-asr"
 DEST_DIR="${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}"
+BUILD_SCRIPT="${PROJECT_DIR}/golos-asr/scripts/build-universal.sh"
+
+if [[ ! -f "$SIDECAR_SRC" ]]; then
+    if [[ -x "$BUILD_SCRIPT" ]]; then
+        echo "golos-asr binary not found — running build-universal.sh..."
+        bash "$BUILD_SCRIPT"
+    else
+        echo "warning: build-universal.sh not found at $BUILD_SCRIPT — skipping auto-build"
+    fi
+fi
 
 if [[ ! -f "$SIDECAR_SRC" ]]; then
     echo "error: golos-asr binary not found at $SIDECAR_SRC"

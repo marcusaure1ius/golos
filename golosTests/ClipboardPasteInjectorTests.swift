@@ -28,4 +28,25 @@ struct ClipboardSaveRestoreTests {
         snapshot.restore(to: pb)
         #expect(pb.string(forType: .string) == nil || pb.string(forType: .string) == "")
     }
+
+    @Test func waitForChangeReturnsTrueAfterMutation() async throws {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString("before", forType: .string)
+        let initialCount = pb.changeCount
+
+        // Mutate clipboard from a concurrent task after a short delay.
+        Task {
+            try? await Task.sleep(nanoseconds: 20_000_000)  // 20ms
+            pb.clearContents()
+            pb.setString("after", forType: .string)
+        }
+
+        let changed = await ClipboardPasteInjector.waitForPasteboardChange(
+            pasteboard: pb,
+            initialCount: initialCount,
+            timeout: 0.5
+        )
+        #expect(changed == true)
+    }
 }
