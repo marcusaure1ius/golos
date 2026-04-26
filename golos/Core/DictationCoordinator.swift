@@ -69,14 +69,24 @@ final class DictationCoordinator: ObservableObject {
 
     private func startRecording(mode: Mode) {
         let started = Date()
+        // Синхронно: state + reset счётчика, ДО любых async hops. Иначе tap-данные
+        // с микрофона могут попасть в feed() ещё до reset'а в beginSession Task.
         state = .preparing(mode: mode)
+        provider.resetSampleCounter()
         Task {
             do {
                 try await provider.beginSession()
-                self.state = .recording(mode: mode, startedAt: started)
+                // Защита от race: пока beginSession был в полёте, user мог отпустить
+                // хоткей и state ушёл в .idle/.transcribing/.error — нельзя
+                // перезаписывать поверх.
+                if case .preparing(let m) = self.state {
+                    self.state = .recording(mode: m, startedAt: started)
+                }
             } catch {
-                self.state = .error(message: error.localizedDescription)
-                self.lastError = error.localizedDescription
+                if case .preparing = self.state {
+                    self.state = .error(message: error.localizedDescription)
+                    self.lastError = error.localizedDescription
+                }
             }
         }
     }

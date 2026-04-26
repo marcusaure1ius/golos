@@ -94,6 +94,8 @@ final class AppCoordinator: ObservableObject {
                 do {
                     try await self.dictation.warmup(modelDir: dir)
                     Log.coordinator.info("warmup succeeded for \(mode.modelId, privacy: .public)")
+                    // Прогрев Voice Processing AU — иначе первый start() блокирует MainActor на 2-3s.
+                    self.audio.prewarm()
                 } catch {
                     Log.coordinator.error("warmup failed: \(error.localizedDescription, privacy: .public)")
                 }

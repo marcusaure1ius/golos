@@ -48,6 +48,19 @@ final class AudioCapture: ObservableObject {
         }
     }
 
+    /// Прогрев Voice Processing AU чтобы первый `start()` не блокировал MainActor
+    /// на 2-3 секунды. `setVoiceProcessingEnabled(true)` инициализирует AUVoiceProcessing
+    /// внутри AVAudioEngine — этот init однократный, но первый вызов очень медленный.
+    /// Вызывается из AppCoordinator после warmup модели (когда permission уже есть).
+    func prewarm() {
+        do {
+            try engine.inputNode.setVoiceProcessingEnabled(voiceProcessingEnabled)
+            Log.audio.info("AudioCapture prewarm done (voiceProcessing=\(self.voiceProcessingEnabled, privacy: .public))")
+        } catch {
+            Log.audio.warning("AudioCapture prewarm failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     func start() throws {
         guard !isRunning else { return }
 
@@ -117,7 +130,14 @@ final class AudioCapture: ObservableObject {
         var error: NSError?
         var consumed = false
         let status = converter.convert(to: outBuf, error: &error, withInputFrom: { _, outStatus in
-            if consumed { outStatus.pointee = .endOfStream; return nil }
+            if consumed {
+                // КРИТИЧНО: .noDataNow, НЕ .endOfStream. Конвертер живёт между tap-buffer'ами,
+                // и .endOfStream после первого input блокирует все последующие convert() calls
+                // (он считает что поток окончен). С .noDataNow конвертер просто завершает текущий
+                // вызов и готов принять следующий buffer на следующем tap'е.
+                outStatus.pointee = .noDataNow
+                return nil
+            }
             outStatus.pointee = .haveData
             consumed = true
             return inputBuffer

@@ -126,13 +126,19 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     }
 
     func beginSession() async throws {
-        samplesEnqueued = 0
         let resp = try await roundtrip(makeRequest: { id in
             .beginSession(id: id)
         }, timeout: 5)
         guard case .sessionStarted = resp else {
             throw TranscriptionError.protocolError("expected session_started, got \(resp)")
         }
+    }
+
+    /// Синхронный сброс счётчика сэмплов перед началом новой сессии.
+    /// Вызывать ДО старта `beginSession` Task, иначе tap-данные могут попасть в feed
+    /// раньше чем reset, и samplesEnqueued уйдёт в минус (ну или потеряет первый chunk).
+    func resetSampleCounter() {
+        samplesEnqueued = 0
     }
 
     func feed(samples: Data) throws {

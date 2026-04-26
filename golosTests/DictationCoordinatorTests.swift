@@ -14,6 +14,7 @@ final class MockTranscriptionProvider: TranscriptionProvider, @unchecked Sendabl
     var flushOrder: [String] = []
 
     func start(modelDir: URL) async throws { startCalledWith = modelDir }
+    func resetSampleCounter() { feedBytes = 0 }
     func beginSession() async throws { beginCalled = true }
     func feed(samples: Data) throws { feedBytes += samples.count }
     func flushSamples() async { flushOrder.append("flush") }
@@ -46,6 +47,7 @@ final class MockTextInjector: TextInjector, @unchecked Sendable {
 final class FailingMockProvider: TranscriptionProvider, @unchecked Sendable {
     var partials: AsyncStream<String> = AsyncStream { _ in }
     func start(modelDir: URL) async throws {}
+    func resetSampleCounter() {}
     func beginSession() async throws { throw TranscriptionError.protocolError("forced") }
     func feed(samples: Data) throws {}
     func flushSamples() async {}
@@ -94,6 +96,55 @@ struct DictationCoordinatorTests {
 
         // Не должно быть .recording — beginSession упал.
         if case .recording = c.state { Issue.record("state must not be .recording after beginSession failure"); return }
+    }
+
+    /// Regression: если user отпускает хоткей пока beginSession ещё в полёте,
+    /// state .preparing → .idle (cancel-path). beginSession Task НЕ должен потом
+    /// перезаписать .recording поверх .idle (был phantom-recording баг 2026-04-26).
+    @MainActor
+    @Test func beginSessionDoesNotOverrideStateAfterRelease() async throws {
+        // Slow provider — beginSession висит до явного resume, давая нам окно для UP.
+        actor SlowGate {
+            var resumed = false
+            var continuation: CheckedContinuation<Void, Never>?
+            func wait() async {
+                if resumed { return }
+                await withCheckedContinuation { c in continuation = c }
+            }
+            func resume() {
+                resumed = true
+                continuation?.resume()
+                continuation = nil
+            }
+        }
+        final class SlowProvider: TranscriptionProvider, @unchecked Sendable {
+            let gate: SlowGate
+            var partials: AsyncStream<String> = AsyncStream { _ in }
+            init(gate: SlowGate) { self.gate = gate }
+            func start(modelDir: URL) async throws {}
+            func resetSampleCounter() {}
+            func beginSession() async throws { await gate.wait() }
+            func feed(samples: Data) throws {}
+            func flushSamples() async {}
+            func finalize() async throws -> Transcript { Transcript(text: "", durationMs: 0) }
+            func cancel() async {}
+            func shutdown() async {}
+        }
+        let gate = SlowGate()
+        let prov = SlowProvider(gate: gate)
+        let inj = MockTextInjector()
+        let c = DictationCoordinator(provider: prov, injector: inj)
+        try await c.warmup(modelDir: URL(fileURLWithPath: "/tmp/model"))
+
+        c.handle(.pttPressed) // state .preparing, beginSession Task ждёт gate
+        // Имитируем UP пока beginSession ещё в полёте.
+        c.handle(.pttReleased)
+        #expect(c.state == .idle, "после UP в .preparing state должен быть .idle")
+        // Теперь резюмируем beginSession — он попытается поставить .recording.
+        await gate.resume()
+        try await Task.sleep(nanoseconds: 50_000_000)
+        // Guard должен сработать — state остаётся .idle.
+        #expect(c.state == .idle, "beginSession не должен перезаписывать .idle на .recording")
     }
 
     @MainActor

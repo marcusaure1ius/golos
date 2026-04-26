@@ -6,6 +6,10 @@ protocol TranscriptionProvider: AnyObject {
     /// Запустить провайдера (например, sidecar) и загрузить указанную модель.
     func start(modelDir: URL) async throws
 
+    /// Сбросить счётчик samples нового сессии. Синхронный — вызывать ДО beginSession,
+    /// иначе tap-данные с микрофона могут уйти в счётчик раньше reset'а.
+    func resetSampleCounter()
+
     /// Начать новую сессию записи — после этого вызовы `feed` будут учтены.
     func beginSession() async throws
 
