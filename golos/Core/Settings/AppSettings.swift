@@ -16,6 +16,7 @@ final class AppSettings: ObservableObject {
     @AppStorage("model.mode")            var modelMode: ModelMode = .quality
     @AppStorage("hotkey.holdMs")         var holdMs: Int = 200
     @AppStorage("hotkey.doubleTapMs")    var doubleTapMs: Int = 300
+    @AppStorage("hotkey.keycode")        var hotkeyKeycode: Int = 0x3D
     @AppStorage("audio.deviceUid")       var deviceUid: String = ""
     @AppStorage("audio.noiseReduction")  var noiseReduction: Bool = false
     @AppStorage("ui.notifications")      var notifications: Bool = true

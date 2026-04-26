@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreAudio
 import Combine
 
 /// Захватывает звук с дефолтного (или выбранного) микрофона, конвертирует в
@@ -23,6 +24,8 @@ final class AudioCapture: ObservableObject {
     @Published private(set) var level: Float = 0
 
     private var isRunning = false
+    private var preferredDeviceUid: String?
+    private var voiceProcessingEnabled: Bool = false
 
     init() {
         var cont: AsyncStream<Data>.Continuation!
@@ -30,8 +33,48 @@ final class AudioCapture: ObservableObject {
         self.samplesContinuation = cont
     }
 
+    /// Stores the preferred device UID and voice processing flag.
+    /// If currently running, stops and restarts to apply new settings.
+    func applySettings(deviceUid: String, voiceProcessingEnabled: Bool) {
+        self.preferredDeviceUid = deviceUid.isEmpty ? nil : deviceUid
+        self.voiceProcessingEnabled = voiceProcessingEnabled
+        if isRunning {
+            stop()
+            do {
+                try start()
+            } catch {
+                Log.audio.error("AudioCapture restart failed after applySettings: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
     func start() throws {
         guard !isRunning else { return }
+
+        // Apply preferred device if set
+        if let uid = preferredDeviceUid,
+           let deviceID = AudioDevices.audioDeviceID(forUid: uid) {
+            var mutableDeviceID = deviceID
+            let err = AudioUnitSetProperty(
+                engine.inputNode.audioUnit!,
+                kAudioOutputUnitProperty_CurrentDevice,
+                kAudioUnitScope_Global,
+                0,
+                &mutableDeviceID,
+                UInt32(MemoryLayout<AudioDeviceID>.size)
+            )
+            if err != noErr {
+                Log.audio.warning("Failed to set preferred audio device (uid=\(uid, privacy: .public)): \(err, privacy: .public)")
+            }
+        }
+
+        // Apply voice processing
+        do {
+            try engine.inputNode.setVoiceProcessingEnabled(voiceProcessingEnabled)
+        } catch {
+            Log.audio.warning("setVoiceProcessingEnabled failed: \(error.localizedDescription, privacy: .public)")
+        }
+
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
         guard let converter = AVAudioConverter(from: inputFormat, to: Self.targetFormat) else {

@@ -71,16 +71,19 @@ struct HotkeyPatternDetector {
 }
 
 /// Менеджер глобальных хоткеев на основе CGEventTap.
-/// Слушает Right Option (kVK_RightOption = 0x3D), не трогает левый.
+/// Слушает Right Option (kVK_RightOption = 0x3D) по умолчанию, не трогает левый.
 @MainActor
 final class HotkeyManager {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var detector: HotkeyPatternDetector
     private let onEvent: (HotkeyEvent) -> Void
+    private(set) var boundKeycode: Int64
 
     init(holdThresholdMs: Int = 200, doubleTapWindowMs: Int = 300,
+         boundKeycode: Int64 = 0x3D,
          onEvent: @escaping (HotkeyEvent) -> Void) {
+        self.boundKeycode = boundKeycode
         self.onEvent = onEvent
         self.detector = HotkeyPatternDetector(
             holdThresholdMs: holdThresholdMs,
@@ -90,6 +93,10 @@ final class HotkeyManager {
         self.detector.emit = { [weak self] e in
             DispatchQueue.main.async { self?.onEvent(e) }
         }
+    }
+
+    func updateBinding(keycode: Int64) {
+        self.boundKeycode = keycode
     }
 
     deinit {
@@ -132,8 +139,7 @@ final class HotkeyManager {
 
     fileprivate func handleFlagsChanged(rawKeycode: Int64, isDown: Bool) {
         Log.hotkeys.info("flagsChanged keycode=\(rawKeycode, privacy: .public) isDown=\(isDown, privacy: .public)")
-        // Правый Option — keycode 0x3D.
-        guard rawKeycode == 0x3D else { return }
+        guard rawKeycode == boundKeycode else { return }
         let now = Self.nowMs()
         if isDown {
             Log.hotkeys.info("right-option DOWN at \(now, privacy: .public)")

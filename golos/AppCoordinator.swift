@@ -38,10 +38,17 @@ final class AppCoordinator: ObservableObject {
         mb.install()
         self.menuBar = mb
 
+        // Apply audio settings
+        audio.applySettings(
+            deviceUid: AppSettings.shared.deviceUid,
+            voiceProcessingEnabled: AppSettings.shared.noiseReduction
+        )
+
         // Hotkeys (требуют Input Monitoring; если permission нет — start() выкинет ошибку, мы её залогируем)
         let hm = HotkeyManager(
             holdThresholdMs: AppSettings.shared.holdMs,
-            doubleTapWindowMs: AppSettings.shared.doubleTapMs
+            doubleTapWindowMs: AppSettings.shared.doubleTapMs,
+            boundKeycode: Int64(AppSettings.shared.hotkeyKeycode)
         ) { [weak self] e in
             self?.dictation.handle(e)
         }
