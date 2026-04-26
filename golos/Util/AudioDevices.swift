@@ -73,8 +73,9 @@ enum AudioDevices {
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
+        let cfUid = uid as CFString
         var translation = AudioValueTranslation(
-            mInputData: Unmanaged.passRetained(uid as CFString).autorelease().toOpaque(),
+            mInputData: Unmanaged.passUnretained(cfUid).toOpaque(),
             mInputDataSize: UInt32(MemoryLayout<CFString>.size),
             mOutputData: UnsafeMutableRawPointer.allocate(byteCount: MemoryLayout<AudioDeviceID>.size, alignment: MemoryLayout<AudioDeviceID>.alignment),
             mOutputDataSize: UInt32(MemoryLayout<AudioDeviceID>.size)

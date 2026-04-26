@@ -153,6 +153,17 @@ final class HotkeyManager {
     static func nowMs() -> Int {
         Int(Date().timeIntervalSince1970 * 1000)
     }
+
+    /// Maps a modifier keycode to its corresponding CGEventFlags mask.
+    static func modifierFlag(forKeycode kc: Int64) -> CGEventFlags? {
+        switch kc {
+        case 0x3D, 0x3A: return .maskAlternate
+        case 0x3C, 0x38: return .maskShift
+        case 0x3E, 0x3B: return .maskControl
+        case 0x36, 0x37: return .maskCommand
+        default: return nil
+        }
+    }
 }
 
 // CGEventTap callback — C function, можем хранить self через userInfo.
@@ -162,10 +173,12 @@ private let hotkeyCallback: CGEventTapCallBack = { _, type, event, refcon in
     guard type == .flagsChanged else { return Unmanaged.passUnretained(event) }
     let keycode = event.getIntegerValueField(.keyboardEventKeycode)
     // Для flagsChanged: модификатор «нажат», если соответствующий flag установлен.
+    // Захватываем flags до dispatch, так как CGEventFlags — value type.
     let flags = event.flags
-    let optionDown = flags.contains(.maskAlternate)
     DispatchQueue.main.async {
-        manager.handleFlagsChanged(rawKeycode: keycode, isDown: optionDown)
+        let flagForBound = HotkeyManager.modifierFlag(forKeycode: manager.boundKeycode) ?? .maskAlternate
+        let isDown = flags.contains(flagForBound)
+        manager.handleFlagsChanged(rawKeycode: keycode, isDown: isDown)
     }
     return Unmanaged.passUnretained(event)
 }

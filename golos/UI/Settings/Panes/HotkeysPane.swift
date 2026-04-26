@@ -31,6 +31,10 @@ final class HotkeyCaptureModel: ObservableObject {
         }
     }
 
+    deinit {
+        if let m = monitor { NSEvent.removeMonitor(m) }
+    }
+
     func displayName(for keycode: Int) -> String {
         switch keycode {
         case 0x3D: return "⌥ Right"
