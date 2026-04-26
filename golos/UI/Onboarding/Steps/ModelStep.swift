@@ -5,6 +5,7 @@ struct ModelStep: View {
     @ObservedObject var vm: OnboardingViewModel
     @StateObject private var manager = ModelManager()
     @State private var downloadingId: String?
+    @State private var lastAttempted: ModelDescriptor?
 
     var body: some View {
         StepLayout(
@@ -58,16 +59,21 @@ struct ModelStep: View {
     }
 
     private func download(_ desc: ModelDescriptor) async {
+        guard downloadingId == nil else { return }
+        lastAttempted = desc
         downloadingId = desc.id
         defer { downloadingId = nil }
         do {
             try await manager.download(desc)
-            vm.modelReady = manager.isInstalled(settings.modelMode.descriptor)
+            vm.modelReady = manager.isInstalled(desc)
         } catch { /* error через manager.error */ }
     }
 
     private func retry() async {
-        let desc = settings.modelMode.descriptor
+        guard let desc = lastAttempted else {
+            await download(settings.modelMode.descriptor)
+            return
+        }
         await download(desc)
     }
 }

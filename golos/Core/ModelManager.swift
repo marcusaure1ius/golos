@@ -51,6 +51,8 @@ class ModelManager: ObservableObject {
         return true
     }
 
+    func surfaceError(_ message: String) { error = message }
+
     func download(_ desc: ModelDescriptor) async throws {
         error = nil
         do {

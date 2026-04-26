@@ -40,19 +40,21 @@ struct ModelsPane: View {
             isInstalled: manager.isInstalled(desc),
             isDownloading: downloadingId == desc.id,
             onDownload: { Task { await download(desc) } },
-            onDelete: { try? delete(desc) }
+            onDelete: { delete(desc) }
         )
     }
 
     private func download(_ desc: ModelDescriptor) async {
+        guard downloadingId == nil else { return }
         downloadingId = desc.id
         defer { downloadingId = nil }
         try? await manager.download(desc)
     }
 
-    private func delete(_ desc: ModelDescriptor) throws {
+    private func delete(_ desc: ModelDescriptor) {
         let dir = manager.modelDir(desc.id)
-        try FileManager.default.removeItem(at: dir)
+        do { try FileManager.default.removeItem(at: dir) }
+        catch { manager.surfaceError(error.localizedDescription) }
     }
 
     private func formatBytes(_ b: Int64) -> String {
