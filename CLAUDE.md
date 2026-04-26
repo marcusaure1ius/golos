@@ -1,67 +1,44 @@
 # CLAUDE.md
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+## Project
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+`golos` — нативное macOS-приложение для голосовой диктовки в стиле Wispr Flow, с локальным распознаванием через GigaAM-v3 (ONNX). Хоткей (по умолчанию Right Option) → запись → транскрипция → вставка текста в активное приложение.
 
-## 1. Think Before Coding
+## Architecture
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+Swift app + Rust sidecar.
 
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+- **Swift app** (`golos/`) — UI, hotkeys, audio capture, paste injection, settings, onboarding.
+  - `Core/` — состояние и движок (`DictationCoordinator`, `AudioCapture`, `AudioWriter`, `LocalGigaAMProvider`, `HotkeyManager`, `ClipboardPasteInjector`, `ModelManager`).
+  - `Core/SidecarProtocol.swift` — JSON-lines протокол со sidecar (request_id, samples_total handshake).
+  - `UI/` — Menu bar, Pill (recording overlay), Settings, Onboarding.
+  - `Util/` — `Logger` (`os.Logger` subsystem `com.golos.app`), `Permissions`, `AppPaths`, `AudioDevices`.
+- **Rust sidecar** (`golos-asr/`) — ONNX inference. Получает control сообщения по stdin (JSON-lines), PCM (Int16 LE 16kHz mono) по отдельному audio-fd pipe, отвечает по stdout.
 
-## 2. Simplicity First
+IPC handshake: Hello → Load{model_path} → Ready → BeginSession → feed PCM → EndSession{samples_total} → Final{text}.
 
-**Minimum code that solves the problem. Nothing speculative.**
+## Code conventions
 
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
+- Swift 5.9+, macOS 13+. `@MainActor` для UI и большинства Core-классов; `actor` для serialized state (`AudioWriter`, `ResponseCorrelator`).
+- Тесты: **Swift Testing** (`@Suite`/`@Test`/`#expect`) для unit, XCTest для UI (`golosUITests`). Не путать.
+- Существующие комментарии и user-facing строки — на русском. Сохраняй стиль.
+- Логи через `Log.<category>` (см. `Util/Logger.swift`), категории: `coordinator`, `hotkeys`, `audio`, `sidecar`, `injection`, `model`, `ui`.
+- Spec-документы и планы лежат локально в `docs/specs/` и `docs/plans/` (gitignored), не комить туда.
 
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+## Build & test
 
-## 3. Surgical Changes
+- Rust tests: `/Users/alfa/.cargo/bin/cargo test` — `cargo` не в default PATH.
+- Swift tests: `xcodebuild test -project golos.xcodeproj -scheme golos -destination 'platform=macOS' -derivedDataPath /tmp/golos-derived`.
+- Подсчёт тестов: `xcodebuild test ... > /tmp/log; grep -c "passed on" /tmp/log` — `| tail` обрезает Rust'овые `test result:` строки.
+- **Sidecar пересобирается отдельно**: `PATH=/Users/alfa/.cargo/bin:$PATH bash golos-asr/scripts/build-universal.sh`. `xcodebuild` сам не запускает cargo — `Scripts/copy-sidecar.sh` копирует уже-собранный бинарь. Если изменился `golos-asr/src/*.rs` — сначала собрать Rust, потом app.
+- Build app: `xcodebuild build -project golos.xcodeproj -scheme golos -configuration Debug -destination 'platform=macOS' -derivedDataPath /tmp/golos-fix`.
 
-**Touch only what you must. Clean up only your own mess.**
+## Behavioral reminders
 
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
+Generic guidelines, без которых типичные ошибки повторяются:
 
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
-
----
+1. **Think first.** State assumptions, ask if unclear, don't pick silently between interpretations.
+2. **Minimum code.** Никаких speculative фич, абстракций под одно использование, error-handling под impossible сценарии.
+3. **Surgical edits.** Меняй только то, что нужно. Не "улучшай" соседний код. Сохраняй существующий стиль, даже если сделал бы иначе.
+4. **TDD where it makes sense.** Для bugfix — тест-репро сначала; для feature — тесты вокруг success criteria. Не тестируй то, что и так очевидно из кода.
+5. **Verify with tests.** После изменений — прогон обоих сьютов (Rust + Swift). Уменьшение test count = регрессия.
