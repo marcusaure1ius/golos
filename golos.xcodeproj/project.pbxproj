@@ -102,6 +102,7 @@
 				75F2A8512F9E420300D0515E /* Sources */,
 				75F2A8522F9E420300D0515E /* Frameworks */,
 				75F2A8532F9E420300D0515E /* Resources */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* Copy golos-asr sidecar */,
 			);
 			buildRules = (
 			);
@@ -230,6 +231,31 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+
+/* Begin PBXShellScriptBuildPhase section */
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* Copy golos-asr sidecar */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(PROJECT_DIR)/golos-asr/target/universal-apple-darwin/release/golos-asr",
+			);
+			name = "Copy golos-asr sidecar";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(EXECUTABLE_FOLDER_PATH)/golos-asr",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -euo pipefail\n\nSIDECAR_SRC=\"${PROJECT_DIR}/golos-asr/target/universal-apple-darwin/release/golos-asr\"\nDEST_DIR=\"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}\"\n\nif [[ ! -f \"$SIDECAR_SRC\" ]]; then\n    echo \"error: golos-asr binary not found at $SIDECAR_SRC\"\n    echo \"       run ./golos-asr/scripts/build-universal.sh first\"\n    exit 1\nfi\n\nmkdir -p \"$DEST_DIR\"\ncp -f \"$SIDECAR_SRC\" \"$DEST_DIR/golos-asr\"\nchmod +x \"$DEST_DIR/golos-asr\"\n\nif [[ -n \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" && \"${EXPANDED_CODE_SIGN_IDENTITY}\" != \"-\" ]]; then\n    codesign --force --options runtime --timestamp \\\\\n        --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" \\\\\n        \"$DEST_DIR/golos-asr\"\nfi\n\necho \"Sidecar copied to $DEST_DIR/golos-asr\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		75F2A8512F9E420300D0515E /* Sources */ = {
