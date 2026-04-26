@@ -26,6 +26,11 @@ struct AccessibilityStep: View {
             .padding(14)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
         }
+        .onAppear {
+            // Триггерим системный prompt — это также добавляет golos в список Accessibility,
+            // даже если ещё не выдан (без prompt'а — нет записи в Settings).
+            _ = Permissions.requestAccessibility()
+        }
         .onReceive(timer) { _ in
             granted = Permissions.accessibilityGranted()
         }

@@ -100,12 +100,13 @@ final class HotkeyManager {
 
     /// Запуск перехвата. Требует Input Monitoring permission.
     func start() throws {
+        Log.hotkeys.info("perms — mic: \(String(describing: Permissions.microphoneStatus().rawValue), privacy: .public), ax: \(Permissions.accessibilityGranted(), privacy: .public), input: \(Permissions.inputMonitoringGranted(), privacy: .public)")
         let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
         let info = Unmanaged.passUnretained(self).toOpaque()
         guard let tap = CGEvent.tapCreate(
-            tap: .cghidEventTap,
+            tap: .cgSessionEventTap,
             place: .headInsertEventTap,
-            options: .listenOnly,
+            options: .defaultTap,
             eventsOfInterest: mask,
             callback: hotkeyCallback,
             userInfo: info
@@ -130,11 +131,17 @@ final class HotkeyManager {
     }
 
     fileprivate func handleFlagsChanged(rawKeycode: Int64, isDown: Bool) {
+        Log.hotkeys.info("flagsChanged keycode=\(rawKeycode, privacy: .public) isDown=\(isDown, privacy: .public)")
         // Правый Option — keycode 0x3D.
         guard rawKeycode == 0x3D else { return }
         let now = Self.nowMs()
-        if isDown { detector.onKeyDown(timeMs: now) }
-        else      { detector.onKeyUp(timeMs: now) }
+        if isDown {
+            Log.hotkeys.info("right-option DOWN at \(now, privacy: .public)")
+            detector.onKeyDown(timeMs: now)
+        } else {
+            Log.hotkeys.info("right-option UP at \(now, privacy: .public)")
+            detector.onKeyUp(timeMs: now)
+        }
     }
 
     static func nowMs() -> Int {

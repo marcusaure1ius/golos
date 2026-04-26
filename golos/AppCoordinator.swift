@@ -116,6 +116,7 @@ final class AppCoordinator: ObservableObject {
             pill.viewModel.state = .transcribing
             menuBar?.setState(.processing)
         case .error(let msg):
+            audio.stop()
             pill.viewModel.state = .error(message: msg)
             menuBar?.setState(.error)
             Task { @MainActor [weak self] in

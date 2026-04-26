@@ -69,6 +69,12 @@ fn main() -> Result<()> {
         };
 
         let is_shutdown = matches!(req, Request::Shutdown);
+        // EndSession: дать audio thread шанс прокачать оставшиеся байты из pipe.
+        // Без этого race — sidecar финализирует с пустым buffer'ом раньше, чем
+        // audio thread успевает прочитать всё, что Swift app записал в pipe.
+        if matches!(req, Request::EndSession) {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        }
         let resp = {
             let mut s = session.lock().expect("session mutex poisoned");
             s.handle(req)

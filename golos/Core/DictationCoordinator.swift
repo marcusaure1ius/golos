@@ -73,13 +73,20 @@ final class DictationCoordinator: ObservableObject {
         state = .transcribing
         Task {
             do {
+                Log.coordinator.info("finalizing — calling sidecar")
+                // Дать AudioCapture's main-actor yield-задачам долететь до pipe
+                // прежде чем посылать end_session.
+                try await Task.sleep(nanoseconds: 300_000_000)
                 let result = try await provider.finalize()
+                Log.coordinator.info("got transcript: '\(result.text, privacy: .public)' (\(result.durationMs, privacy: .public)ms)")
                 let outcome = await injector.inject(text: result.text)
+                Log.coordinator.info("inject outcome: \(String(describing: outcome), privacy: .public)")
                 if case .copiedToClipboard = outcome {
                     Notifications.show(title: L10n.notifClipboard, body: L10n.notifClipboardBody)
                 }
                 self.state = .idle
             } catch {
+                Log.coordinator.error("finalize/inject failed: \(error.localizedDescription, privacy: .public)")
                 self.state = .error(message: error.localizedDescription)
                 self.lastError = error.localizedDescription
                 // Авто-вернуться в idle через 3 сек.

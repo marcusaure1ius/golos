@@ -14,22 +14,25 @@ final class AudioCapture: ObservableObject {
         interleaved: true
     )!
 
-    /// Stream с сырыми Int16 LE сэмплами (Data).
-    private(set) var samples: AsyncStream<Data> = AsyncStream { _ in }
-    private var samplesContinuation: AsyncStream<Data>.Continuation?
+    /// Stream с сырыми Int16 LE сэмплами (Data). **Живёт всё время существования
+    /// AudioCapture** — НЕ пересоздаётся при start/stop. Consumer subscribe'ится
+    /// один раз и получает данные на протяжении всех recording-сессий.
+    let samples: AsyncStream<Data>
+    private let samplesContinuation: AsyncStream<Data>.Continuation
 
     /// Stream с уровнем (RMS, [0...1]).
     @Published private(set) var level: Float = 0
 
     private var isRunning = false
 
+    init() {
+        var cont: AsyncStream<Data>.Continuation!
+        self.samples = AsyncStream { c in cont = c }
+        self.samplesContinuation = cont
+    }
+
     func start() throws {
         guard !isRunning else { return }
-        // Заводим streams заново при каждом старте.
-        var sCont: AsyncStream<Data>.Continuation!
-        self.samples = AsyncStream { c in sCont = c }
-        self.samplesContinuation = sCont
-
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
         guard let converter = AVAudioConverter(from: inputFormat, to: targetFormat) else {
@@ -54,8 +57,8 @@ final class AudioCapture: ObservableObject {
         guard isRunning else { return }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        samplesContinuation?.finish()
-        samplesContinuation = nil
+        // НЕ закрываем samplesContinuation — он живёт всё время. Просто отключаем
+        // источник данных. На следующий start() поток заработает снова.
         converter = nil
         isRunning = false
         level = 0
@@ -99,9 +102,9 @@ final class AudioCapture: ObservableObject {
         }
         let rms = Float(sqrt(sumSquares / Double(frameCount)))
 
-        // Публикация — на main actor.
+        // Публикация — на main actor. samplesContinuation живёт всё время существования.
         Task { @MainActor [weak self] in
-            self?.samplesContinuation?.yield(data)
+            self?.samplesContinuation.yield(data)
             self?.level = rms
         }
     }

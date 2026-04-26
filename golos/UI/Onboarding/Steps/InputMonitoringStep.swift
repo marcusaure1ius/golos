@@ -31,6 +31,11 @@ struct InputMonitoringStep: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .onAppear {
+            // Регистрируем намерение получить Input Monitoring — это добавляет golos
+            // в список System Settings, даже если ещё не выдан.
+            _ = Permissions.requestInputMonitoring()
+        }
         .onReceive(timer) { _ in
             granted = Permissions.inputMonitoringGranted()
         }
