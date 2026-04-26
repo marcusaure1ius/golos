@@ -80,7 +80,9 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         try await waitForHello(timeout: 5)
         let id = nextRequestId()
         try send(.load(id: id, modelPath: modelDir.path))
-        let resp = try await correlator.await(id: id, timeout: 30)
+        // ONNX Runtime: graph optimizations + session creation для ~340MB модели
+        // могут занимать десятки секунд (особенно холодный старт). 30s недостаточно.
+        let resp = try await correlator.await(id: id, timeout: 120)
         switch resp {
         case .ready: return
         case .error(_, _, let msg): throw TranscriptionError.modelLoadFailed(msg)
