@@ -132,4 +132,21 @@ mod tests {
         assert_eq!(n, 1);
         assert_eq!(out[0], 1);
     }
+
+    #[test]
+    fn end_session_with_partial_chunk_includes_all_samples() {
+        // 1500 семплов — меньше 100ms при 16kHz (100ms = 1600 семплов).
+        // Проверяем что write_wav → read_wav сохраняет ровно 1500 семплов.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("partial.wav");
+        let mut b = AudioBuffer::new();
+        b.extend(&vec![42i16; 1500]);
+        assert_eq!(b.len(), 1500);
+        b.write_wav(&path, 16_000).unwrap();
+
+        let reader = hound::WavReader::open(&path).unwrap();
+        let samples: Vec<i16> = reader.into_samples().map(|s: hound::Result<i16>| s.unwrap()).collect();
+        assert_eq!(samples.len(), 1500);
+        assert!(samples.iter().all(|&s| s == 42));
+    }
 }

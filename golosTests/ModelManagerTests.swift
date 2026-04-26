@@ -21,6 +21,31 @@ import Foundation
     }
 
     @MainActor
+    @Test func downloadWithUnreachableURLSetsError() async throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let badDesc = ModelDescriptor(id: "bad_model", displayName: "Bad", files: [
+            ModelFile(
+                url: URL(string: "http://127.0.0.1:1/never")!,
+                relativePath: "x.bin",
+                sha256: nil,
+                sizeBytes: nil
+            )
+        ])
+        let mgr = TestableModelManager(rootOverride: tmp)
+        var didThrow = false
+        do {
+            try await mgr.download(badDesc)
+        } catch {
+            didThrow = true
+        }
+        #expect(didThrow, "download с недоступным URL должен бросать")
+        #expect(mgr.error != nil, "manager.error должен быть установлен после неудачи")
+    }
+
+    @MainActor
     @Test func isInstalledChecksFilesExistWithUnknownSize() throws {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
