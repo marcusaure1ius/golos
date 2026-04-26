@@ -1,15 +1,21 @@
-//! Точка входа sidecar. Аргументы: `--audio-fd <N>`. Читает stdin построчно,
-//! audio-fd — бинарно (Int16 LE сэмплы). Пишет в stdout JSON-lines.
+//! Точка входа sidecar. Аргументы: `--audio-path <path>`. Читает stdin построчно,
+//! audio-path — открывает путь как FIFO/файл и читает Int16 LE сэмплы.
+//! Пишет в stdout JSON-lines.
+//!
+//! Почему path а не fd: macOS `Process` (NSTask) использует `posix_spawn` с
+//! `POSIX_SPAWN_CLOEXEC_DEFAULT`, который закрывает все fd не из явного
+//! `addinherit_np` списка — даже если родитель снял `FD_CLOEXEC`. Process не
+//! даёт доступа к этому списку, поэтому fd 3 в child всегда оказывался невалидным.
+//! Передача path обходит это: child открывает FIFO сам.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use clap::Parser;
 use golos_asr::audio::read_samples_le;
 use golos_asr::protocol::{Request, Response};
 use golos_asr::session::Session;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
-use std::os::fd::FromRawFd;
-use std::os::unix::io::RawFd;
+use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -17,9 +23,9 @@ use std::thread;
 #[derive(Parser, Debug)]
 #[command(version, about = "GigaAM-v3 transcription sidecar for golos.app")]
 struct Args {
-    /// Файловый дескриптор для бинарного потока PCM (Int16 LE, 16kHz mono).
+    /// Путь к FIFO с бинарным потоком PCM (Int16 LE, 16kHz mono).
     #[arg(long)]
-    audio_fd: RawFd,
+    audio_path: PathBuf,
 }
 
 const AUDIO_CHUNK_SAMPLES: usize = 1600; // ~100ms @16kHz
@@ -28,7 +34,7 @@ const _: () = assert!(AUDIO_CHUNK_SAMPLES > 0);
 fn main() -> Result<()> {
     init_logging();
     let args = Args::parse();
-    tracing::info!("golos-asr starting (audio_fd={})", args.audio_fd);
+    tracing::info!("golos-asr starting (audio_path={:?})", args.audio_path);
 
     // 1. Стандартный output — наш канал ответов. Заворачиваем в Mutex,
     //    чтобы оба треда (main и audio-reader) могли писать.
@@ -44,12 +50,12 @@ fn main() -> Result<()> {
     // Канал, куда audio thread шлёт уведомление каждый раз, когда счётчик увеличился.
     let (samples_tx, samples_rx) = channel::<u64>();
 
-    // 3. Отдельный тред читает audio-fd и пушит сэмплы в Session::feed_samples.
+    // 3. Отдельный тред читает audio-path (FIFO) и пушит сэмплы в Session::feed_samples.
     let audio_session = Arc::clone(&session);
     let audio_counter = Arc::clone(&samples_read);
-    let audio_fd = args.audio_fd;
+    let audio_path = args.audio_path.clone();
     thread::spawn(move || {
-        if let Err(e) = audio_reader_loop(audio_fd, audio_session, audio_counter, samples_tx) {
+        if let Err(e) = audio_reader_loop(&audio_path, audio_session, audio_counter, samples_tx) {
             tracing::error!("audio reader exited with error: {:#}", e);
         }
     });
@@ -119,18 +125,21 @@ fn main() -> Result<()> {
 }
 
 fn audio_reader_loop(
-    fd: RawFd,
+    path: &std::path::Path,
     session: Arc<Mutex<Session>>,
     counter: Arc<std::sync::atomic::AtomicU64>,
     notify: Sender<u64>,
 ) -> Result<()> {
-    if fd < 0 { return Err(anyhow!("invalid audio_fd: {}", fd)); }
-    let mut file = unsafe { File::from_raw_fd(fd) };
+    // open(2) на FIFO для чтения блокируется, пока writer (Swift) не откроет свой конец.
+    // Swift открывает с O_RDWR, поэтому read-конец сразу становится доступен.
+    let mut file = File::open(path)
+        .with_context(|| format!("open audio fifo {:?}", path))?;
+    tracing::info!("audio fifo opened: {:?}", path);
     let mut buf = vec![0i16; AUDIO_CHUNK_SAMPLES];
     loop {
-        let n = read_samples_le(&mut file, &mut buf).context("read audio fd")?;
+        let n = read_samples_le(&mut file, &mut buf).context("read audio fifo")?;
         if n == 0 {
-            tracing::info!("audio fd EOF");
+            tracing::info!("audio fifo EOF");
             return Ok(());
         }
         {

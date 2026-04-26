@@ -85,9 +85,10 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     private var stdoutHandle: FileHandle?
     private var stderrHandle: FileHandle?
 
-    /// Pipe для аудио (Swift пишет → sidecar читает). Read-end передаётся sidecar
-    /// через --audio-fd, мы (write-end) держим у себя.
+    /// FIFO для аудио (Swift пишет → sidecar читает). Sidecar получает path через
+    /// `--audio-path`, оба процесса открывают по нему свои концы.
     private var writer: AudioWriter?
+    private var audioFifoPath: String?
 
     private let correlator = ResponseCorrelator()
     private var helloReceived = false
@@ -175,6 +176,10 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         process = nil
         await Task.detached { proc?.waitUntilExit() }.value
         await correlator.failAll(TranscriptionError.sidecarNotRunning)
+        if let path = audioFifoPath {
+            unlink(path)
+            audioFifoPath = nil
+        }
     }
 
     // MARK: Private
@@ -223,21 +228,27 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     private func spawnSidecarIfNeeded() throws {
         if process?.isRunning == true { return }
 
-        // Создаём audio pipe.
-        var fds: [Int32] = [0, 0]
-        if pipe(&fds) != 0 {
+        // Аудио передаём через named FIFO. Раньше использовался pipe()+fd inheritance,
+        // но macOS Process (NSTask) делает posix_spawn с POSIX_SPAWN_CLOEXEC_DEFAULT —
+        // все fd кроме явно перечисленных в addinherit_np закрываются в child даже после
+        // снятия FD_CLOEXEC. Process не даёт доступа к этому списку, поэтому
+        // audio fd 3 в child всегда становился невалидным (EBADF). FIFO решает: оба
+        // процесса открывают по path, fd-наследование не нужно.
+        let fifoPath = NSTemporaryDirectory() + "golos-audio-\(UUID().uuidString).fifo"
+        if mkfifo(fifoPath, 0o600) != 0 {
             throw TranscriptionError.sidecarNotRunning
         }
-        let readFd = fds[0]   // отдаём sidecar'у
-        let writeFd = fds[1]  // оставляем себе
-
-        // Снимаем CLOEXEC c readFd, чтобы Process унаследовал его.
-        let flags = fcntl(readFd, F_GETFD)
-        _ = fcntl(readFd, F_SETFD, flags & ~FD_CLOEXEC)
+        // Открываем сразу, ДО запуска sidecar'а, иначе он сразу EOF получит.
+        // O_RDWR не блокируется ожиданием reader'а (в отличие от O_WRONLY).
+        let writeFd = open(fifoPath, O_RDWR)
+        if writeFd < 0 {
+            unlink(fifoPath)
+            throw TranscriptionError.sidecarNotRunning
+        }
 
         let proc = Process()
         proc.executableURL = sidecarURL
-        proc.arguments = ["--audio-fd", String(readFd)]
+        proc.arguments = ["--audio-path", fifoPath]
 
         let stdin = Pipe()
         let stdout = Pipe()
@@ -246,15 +257,20 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         proc.standardOutput = stdout
         proc.standardError = stderr
 
-        try proc.run()
-        // Закрываем readFd в родителе — он у sidecar'а.
-        close(readFd)
+        do {
+            try proc.run()
+        } catch {
+            close(writeFd)
+            unlink(fifoPath)
+            throw error
+        }
 
         process = proc
         stdinHandle = stdin.fileHandleForWriting
         stdoutHandle = stdout.fileHandleForReading
         stderrHandle = stderr.fileHandleForReading
         writer = AudioWriter(fd: writeFd)
+        audioFifoPath = fifoPath
 
         // Reset hello state for new process.
         helloReceived = false
