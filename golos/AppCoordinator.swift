@@ -112,6 +112,7 @@ final class AppCoordinator: ObservableObject {
                 Log.coordinator.error("audio start failed: \(error.localizedDescription, privacy: .public)")
                 permissionIssue = "Микрофон недоступен: \(error.localizedDescription). Открыть System Settings → Конфиденциальность → Микрофон."
                 dictation.cancelToIdle()
+                return
             }
             pill.viewModel.state = .recording(mode: mode)
             pill.show()
@@ -121,6 +122,7 @@ final class AppCoordinator: ObservableObject {
                 Log.coordinator.error("audio start failed: \(error.localizedDescription, privacy: .public)")
                 permissionIssue = "Микрофон недоступен: \(error.localizedDescription). Открыть System Settings → Конфиденциальность → Микрофон."
                 dictation.cancelToIdle()
+                return
             }
             pill.viewModel.state = .recording(mode: mode)
             pill.show()

@@ -85,13 +85,15 @@ struct MicrophoneStep: View {
                 Permissions.requestMicrophone { _ in status = Permissions.microphoneStatus() }
             }
             .buttonStyle(.borderedProminent)
-        case .denied:
+        case .denied, .restricted:
             Button("Открыть System Settings") {
                 let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!
                 NSWorkspace.shared.open(url)
             }
             .buttonStyle(.borderedProminent)
-        default:
+        case .authorized:
+            EmptyView()
+        @unknown default:
             EmptyView()
         }
     }

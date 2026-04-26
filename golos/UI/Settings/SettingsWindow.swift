@@ -1,20 +1,19 @@
 import SwiftUI
 
 struct BannerView: View {
-    let message: String
+    let text: String
+    let action: (String, () -> Void)?
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.yellow)
-            Text(message)
-                .font(.system(size: 12))
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            Text(text).font(.system(size: 12))
             Spacer()
+            if let (label, fn) = action {
+                Button(label, action: fn)
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color.yellow.opacity(0.15))
+        .padding(12)
+        .background(.orange.opacity(0.1))
     }
 }
 
@@ -25,7 +24,10 @@ struct SettingsRoot: View {
     var body: some View {
         VStack(spacing: 0) {
             if let issue = coordinator.permissionIssue {
-                BannerView(message: issue)
+                BannerView(
+                    text: issue,
+                    action: ("Открыть настройки", { Permissions.openInputMonitoringSettings() })
+                )
                 Divider()
             }
             NavigationSplitView {
