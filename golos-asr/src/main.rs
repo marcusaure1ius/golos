@@ -3,7 +3,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use golos_asr::audio::{read_samples_le, AudioBuffer};
+use golos_asr::audio::read_samples_le;
 use golos_asr::protocol::{Request, Response};
 use golos_asr::session::Session;
 use std::fs::File;
@@ -39,13 +39,17 @@ fn main() -> Result<()> {
 
     // 2. Сессия + общий ресурс между audio thread и control loop.
     let session = Arc::new(Mutex::new(Session::new()?));
+    let samples_read = Arc::new(std::sync::atomic::AtomicU64::new(0));
+
+    // Канал, куда audio thread шлёт уведомление каждый раз, когда счётчик увеличился.
+    let (samples_tx, samples_rx) = channel::<u64>();
 
     // 3. Отдельный тред читает audio-fd и пушит сэмплы в Session::feed_samples.
     let audio_session = Arc::clone(&session);
-    let (audio_done_tx, _audio_done_rx) = channel::<()>();
+    let audio_counter = Arc::clone(&samples_read);
     let audio_fd = args.audio_fd;
     thread::spawn(move || {
-        if let Err(e) = audio_reader_loop(audio_fd, audio_session, audio_done_tx) {
+        if let Err(e) = audio_reader_loop(audio_fd, audio_session, audio_counter, samples_tx) {
             tracing::error!("audio reader exited with error: {:#}", e);
         }
     });
@@ -69,12 +73,35 @@ fn main() -> Result<()> {
         };
 
         let is_shutdown = matches!(req, Request::Shutdown);
-        // EndSession: дать audio thread шанс прокачать оставшиеся байты из pipe.
-        // Без этого race — sidecar финализирует с пустым buffer'ом раньше, чем
-        // audio thread успевает прочитать всё, что Swift app записал в pipe.
-        if matches!(req, Request::EndSession) {
-            std::thread::sleep(std::time::Duration::from_millis(200));
+
+        // Если EndSession — ждём, что audio thread прочитал столько же сэмплов, сколько Swift послал.
+        if let Request::EndSession { samples_total } = req {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
+            while samples_read.load(std::sync::atomic::Ordering::SeqCst) < samples_total {
+                let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+                if remaining.is_zero() {
+                    tracing::warn!(
+                        "EndSession: timed out waiting for samples; have={}, want={}",
+                        samples_read.load(std::sync::atomic::Ordering::SeqCst),
+                        samples_total
+                    );
+                    break;
+                }
+                match samples_rx.recv_timeout(remaining) {
+                    Ok(_) => continue,
+                    Err(_) => break,
+                }
+            }
+            samples_read.store(0, std::sync::atomic::Ordering::SeqCst);
+            let resp = {
+                let mut s = session.lock().expect("session mutex poisoned");
+                s.handle(Request::EndSession { samples_total })
+            };
+            write_response(&stdout, &resp)?;
+            if is_shutdown { break; }
+            continue;
         }
+
         let resp = {
             let mut s = session.lock().expect("session mutex poisoned");
             s.handle(req)
@@ -90,12 +117,10 @@ fn main() -> Result<()> {
 fn audio_reader_loop(
     fd: RawFd,
     session: Arc<Mutex<Session>>,
-    _done: Sender<()>,
+    counter: Arc<std::sync::atomic::AtomicU64>,
+    notify: Sender<u64>,
 ) -> Result<()> {
-    if fd < 0 {
-        return Err(anyhow!("invalid audio_fd: {}", fd));
-    }
-    // SAFETY: caller (Swift app) гарантирует, что fd валиден до завершения процесса.
+    if fd < 0 { return Err(anyhow!("invalid audio_fd: {}", fd)); }
     let mut file = unsafe { File::from_raw_fd(fd) };
     let mut buf = vec![0i16; AUDIO_CHUNK_SAMPLES];
     loop {
@@ -104,8 +129,12 @@ fn audio_reader_loop(
             tracing::info!("audio fd EOF");
             return Ok(());
         }
-        let mut s = session.lock().expect("session mutex poisoned");
-        s.feed_samples(&buf[..n]);
+        {
+            let mut s = session.lock().expect("session mutex poisoned");
+            s.feed_samples(&buf[..n]);
+        }
+        let total = counter.fetch_add(n as u64, std::sync::atomic::Ordering::SeqCst) + n as u64;
+        let _ = notify.send(total); // если receiver dropped — control loop уже не ждёт.
     }
 }
 
@@ -129,7 +158,3 @@ fn init_logging() {
         .init();
 }
 
-// Заглушка — для совместимости с _ в audio_done_rx (который мы не читаем,
-// но создан, чтобы tx не дропался преждевременно).
-#[allow(dead_code)]
-fn _silence_unused() {}

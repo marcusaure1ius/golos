@@ -4,13 +4,14 @@ import Foundation
 enum SidecarRequest: Encodable, Equatable {
     case load(modelPath: String)
     case beginSession
-    case endSession
+    case endSession(samplesTotal: UInt64)
     case cancel
     case shutdown
 
     private enum CodingKeys: String, CodingKey {
         case type
         case modelPath = "model_path"
+        case samplesTotal = "samples_total"
     }
 
     func encode(to encoder: Encoder) throws {
@@ -21,8 +22,9 @@ enum SidecarRequest: Encodable, Equatable {
             try c.encode(p, forKey: .modelPath)
         case .beginSession:
             try c.encode("begin_session", forKey: .type)
-        case .endSession:
+        case .endSession(let total):
             try c.encode("end_session", forKey: .type)
+            try c.encode(total, forKey: .samplesTotal)
         case .cancel:
             try c.encode("cancel", forKey: .type)
         case .shutdown:

@@ -4,6 +4,7 @@ import Foundation
 final class DictationCoordinator: ObservableObject {
     enum State: Equatable {
         case idle
+        case preparing(mode: Mode)
         case recording(mode: Mode, startedAt: Date)
         case transcribing
         case error(message: String)
@@ -45,16 +46,25 @@ final class DictationCoordinator: ObservableObject {
             startRecording(mode: .toggle)
         case (.recording(.toggle, _), .toggleTriggered):
             finishRecording()
+        case (.preparing(.ptt), .pttReleased):
+            // beginSession ещё в полёте — отменяем session preparation.
+            state = .idle
+            Task { await provider.cancel() }
+        case (.preparing(.toggle), .toggleTriggered):
+            state = .idle
+            Task { await provider.cancel() }
         default:
             Log.coordinator.warning("ignoring \(String(describing: event), privacy: .public) in \(String(describing: self.state), privacy: .public)")
         }
     }
 
     private func startRecording(mode: Mode) {
-        state = .recording(mode: mode, startedAt: Date())
+        let started = Date()
+        state = .preparing(mode: mode)
         Task {
             do {
                 try await provider.beginSession()
+                self.state = .recording(mode: mode, startedAt: started)
             } catch {
                 self.state = .error(message: error.localizedDescription)
                 self.lastError = error.localizedDescription
@@ -73,10 +83,9 @@ final class DictationCoordinator: ObservableObject {
         state = .transcribing
         Task {
             do {
+                Log.coordinator.info("finalizing — flushing samples")
+                await provider.flushSamples()
                 Log.coordinator.info("finalizing — calling sidecar")
-                // Дать AudioCapture's main-actor yield-задачам долететь до pipe
-                // прежде чем посылать end_session.
-                try await Task.sleep(nanoseconds: 300_000_000)
                 let result = try await provider.finalize()
                 Log.coordinator.info("got transcript: '\(result.text, privacy: .public)' (\(result.durationMs, privacy: .public)ms)")
                 let outcome = await injector.inject(text: result.text)

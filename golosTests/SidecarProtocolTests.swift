@@ -17,6 +17,13 @@ struct SidecarProtocolTests {
         #expect(str == #"{"type":"begin_session"}"#)
     }
 
+    @Test func endSessionEncodesWithSamplesTotal() throws {
+        let data = try JSONEncoder().encode(SidecarRequest.endSession(samplesTotal: 32000))
+        let json = String(data: data, encoding: .utf8)!
+        #expect(json.contains("\"type\":\"end_session\""))
+        #expect(json.contains("\"samples_total\":32000"))
+    }
+
     @Test func helloResponseDecodes() throws {
         let raw = #"{"type":"hello","version":"0.1.0"}"#
         let resp = try JSONDecoder().decode(SidecarResponse.self, from: raw.data(using: .utf8)!)

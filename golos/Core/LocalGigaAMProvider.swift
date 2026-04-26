@@ -11,7 +11,7 @@ final class LocalGigaAMProvider: TranscriptionProvider {
 
     /// Pipe для аудио (Swift пишет → sidecar читает). Read-end передаётся sidecar
     /// через --audio-fd, мы (write-end) держим у себя.
-    private var audioWriteHandle: FileHandle?
+    private var writer: AudioWriter?
 
     /// Параллельный listener stdout — публикует Response в continuation.
     private var responseStream: AsyncStream<SidecarResponse>?
@@ -21,6 +21,7 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     let partials: AsyncStream<String>
 
     private var isShuttingDown = false
+    private var samplesEnqueued: UInt64 = 0
 
     init(sidecarURL: URL = AppPaths.sidecarBinary) {
         self.sidecarURL = sidecarURL
@@ -48,6 +49,7 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     }
 
     func beginSession() async throws {
+        samplesEnqueued = 0
         try send(.beginSession)
         let resp = try await nextResponse(timeout: 5)
         guard case .sessionStarted = resp else {
@@ -56,14 +58,17 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     }
 
     func feed(samples: Data) throws {
-        guard let h = audioWriteHandle else {
-            throw TranscriptionError.sidecarNotRunning
-        }
-        try h.write(contentsOf: samples)
+        guard let w = writer else { throw TranscriptionError.sidecarNotRunning }
+        samplesEnqueued += UInt64(samples.count / 2)  // Int16 → 2 байта на семпл
+        Task { await w.enqueue(samples) }
+    }
+
+    func flushSamples() async {
+        if let w = writer { await w.flush() }
     }
 
     func finalize() async throws -> Transcript {
-        try send(.endSession)
+        try send(.endSession(samplesTotal: samplesEnqueued))
         // Ждём final / error. Игнорируем partial по дороге (в MVP не используем).
         while true {
             let resp = try await nextResponse(timeout: 30)
@@ -89,8 +94,8 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         isShuttingDown = true
         try? send(.shutdown)
         // Закрываем audio write end — sidecar получит EOF, audio thread выйдет.
-        try? audioWriteHandle?.close()
-        audioWriteHandle = nil
+        if let w = writer { await w.close() }
+        writer = nil
         // Ждём процесс с timeout.
         let proc = process
         process = nil
@@ -136,7 +141,7 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         stdinHandle = stdin.fileHandleForWriting
         stdoutHandle = stdout.fileHandleForReading
         stderrHandle = stderr.fileHandleForReading
-        audioWriteHandle = FileHandle(fileDescriptor: writeFd, closeOnDealloc: true)
+        writer = AudioWriter(fd: writeFd)
 
         // Стрим ответов — отдельная задача.
         var cont: AsyncStream<SidecarResponse>.Continuation!

@@ -45,3 +45,12 @@ fn unknown_request_type_returns_err() {
     let parsed: Result<Request, _> = serde_json::from_str(bad);
     assert!(parsed.is_err());
 }
+
+#[test]
+fn end_session_with_samples_total_round_trip() {
+    let req = Request::EndSession { samples_total: 32_000 };
+    let json = serde_json::to_string(&req).unwrap();
+    assert!(json.contains("\"samples_total\":32000"));
+    let parsed: Request = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed, req);
+}

@@ -104,6 +104,13 @@ final class AppCoordinator: ObservableObject {
             pill.hide()
             menuBar?.setState(.idle)
             audio.stop()
+        case .preparing(let mode):
+            do { try audio.start() } catch {
+                Log.coordinator.error("audio start failed: \(error.localizedDescription, privacy: .public)")
+            }
+            pill.viewModel.state = .recording(mode: mode)
+            pill.show()
+            menuBar?.setState(.recording)
         case .recording(let mode, _):
             do { try audio.start() } catch {
                 Log.coordinator.error("audio start failed: \(error.localizedDescription, privacy: .public)")

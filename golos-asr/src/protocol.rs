@@ -10,7 +10,7 @@ pub enum Request {
     /// Начать новую сессию записи. Аудио идёт по audio-fd.
     BeginSession,
     /// Закончить сессию. Sidecar финализирует и шлёт Response::Final.
-    EndSession,
+    EndSession { samples_total: u64 },
     /// Прервать текущую сессию без транскрипции.
     Cancel,
     /// Запросить graceful shutdown.

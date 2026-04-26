@@ -57,7 +57,7 @@ impl Session {
                 self.state = State::Recording;
                 Response::SessionStarted
             }
-            (State::Recording, Request::EndSession) => self.do_finalize(),
+            (State::Recording, Request::EndSession { .. }) => self.do_finalize(),
             (State::Recording, Request::Cancel) => {
                 self.buffer.clear();
                 self.state = State::Loaded;
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn end_without_begin_is_error() {
         let mut s = Session::new().unwrap();
-        let r = s.handle(Request::EndSession);
+        let r = s.handle(Request::EndSession { samples_total: 0 });
         assert!(matches!(r, Response::Error { ref kind, .. } if kind == "invalid_state"));
     }
 

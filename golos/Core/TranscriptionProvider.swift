@@ -13,6 +13,9 @@ protocol TranscriptionProvider: AnyObject {
     /// Семантика — non-blocking: данные кладутся в выходной буфер.
     func feed(samples: Data) throws
 
+    /// Дождаться что все ранее feed'нутые семплы попали в transport.
+    func flushSamples() async
+
     /// Закончить запись и дождаться финального transcript.
     func finalize() async throws -> Transcript
 

@@ -14,6 +14,7 @@ final class MockTranscriptionProvider: TranscriptionProvider, @unchecked Sendabl
     func start(modelDir: URL) async throws { startCalledWith = modelDir }
     func beginSession() async throws { beginCalled = true }
     func feed(samples: Data) throws { feedBytes += samples.count }
+    func flushSamples() async {}
     func finalize() async throws -> Transcript { finalizeReturn }
     func cancel() async { cancelCalled = true }
     func shutdown() async {}
@@ -28,8 +29,34 @@ final class MockTextInjector: TextInjector, @unchecked Sendable {
     }
 }
 
+final class FailingMockProvider: TranscriptionProvider, @unchecked Sendable {
+    var partials: AsyncStream<String> = AsyncStream { _ in }
+    func start(modelDir: URL) async throws {}
+    func beginSession() async throws { throw TranscriptionError.protocolError("forced") }
+    func feed(samples: Data) throws {}
+    func flushSamples() async {}
+    func finalize() async throws -> Transcript { Transcript(text: "", durationMs: 0) }
+    func cancel() async {}
+    func shutdown() async {}
+}
+
 @Suite(.serialized)
 struct DictationCoordinatorTests {
+    @MainActor
+    @Test func beginSessionFailureKeepsStateIdle() async throws {
+        let prov = FailingMockProvider()
+        let inj = MockTextInjector()
+        let c = DictationCoordinator(provider: prov, injector: inj)
+        try await c.warmup(modelDir: URL(fileURLWithPath: "/tmp/model"))
+
+        c.handle(.pttPressed)
+        // Дать Task провернуться и переустановить state в .error
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        // Не должно быть .recording — beginSession упал.
+        if case .recording = c.state { Issue.record("state must not be .recording after beginSession failure"); return }
+    }
+
     @MainActor
     @Test func pttFlowEndToEnd() async throws {
         let prov = MockTranscriptionProvider()
