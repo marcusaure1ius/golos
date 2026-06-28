@@ -73,55 +73,102 @@ struct HotkeysPane: View {
     @ObservedObject var settings: AppSettings = .shared
     @EnvironmentObject var coordinator: AppCoordinator
     @StateObject private var capture = HotkeyCaptureModel()
+    @Environment(\.palette) var p
 
     private var currentKeyLabel: String {
         capture.displayName(for: settings.hotkeyKeycode)
     }
 
     var body: some View {
-        Form {
-            Section {
-                LabeledContent("Push-to-talk:") {
-                    HStack {
-                        Text(capture.isCapturing ? "Нажмите клавишу…" : "\(currentKeyLabel) · hold")
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 6))
-                        Button(capture.isCapturing ? "Отмена" : "Изменить…") {
-                            if capture.isCapturing {
-                                capture.stop()
-                            } else {
-                                capture.start()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Заголовок панели
+                Text("Хоткеи")
+                    .font(.system(size: 26, weight: .semibold))
+                    .tracking(-0.3)
+                    .foregroundStyle(p.ink)
+                    .padding(.bottom, 28)
+
+                // Секция: Горячая клавиша
+                GSectionHeader("Горячая клавиша",
+                               desc: "Клавиша, которой запускается диктовка")
+                    .padding(.bottom, 10)
+
+                GCard {
+                    GSettingRow("Удерживать для записи",
+                                desc: "Push-to-talk: говори, пока клавиша зажата",
+                                showTopDivider: false) {
+                        HStack(spacing: 8) {
+                            GKbd(capture.isCapturing ? "Нажмите клавишу…" : currentKeyLabel)
+                            Button(capture.isCapturing ? "Отмена" : "Изменить…") {
+                                if capture.isCapturing {
+                                    capture.stop()
+                                } else {
+                                    capture.start()
+                                }
                             }
+                            .buttonStyle(GhostButton())
+                        }
+                    }
+                    // Обе строки редактируют один и тот же hotkeyKeycode —
+                    // детектор сам выводит из него PTT и toggle-режим.
+                    // Пока идёт захват, оба GKbd показывают «Нажмите клавишу…».
+                    GSettingRow("Двойное нажатие — старт/стоп",
+                                desc: "Режим без удержания") {
+                        HStack(spacing: 8) {
+                            GKbd(capture.isCapturing ? "Нажмите клавишу…" : "\(currentKeyLabel) ×2")
+                            Button(capture.isCapturing ? "Отмена" : "Изменить…") {
+                                if capture.isCapturing {
+                                    capture.stop()
+                                } else {
+                                    capture.start()
+                                }
+                            }
+                            .buttonStyle(GhostButton())
                         }
                     }
                 }
-                .onChange(of: capture.captured) { newKeycode in
-                    guard let keycode = newKeycode else { return }
-                    settings.hotkeyKeycode = keycode
-                    coordinator.hotkeys?.updateBinding(keycode: Int64(keycode))
-                }
+                .padding(.bottom, 24)
 
-                LabeledContent("Toggle:") {
-                    HStack {
-                        Text("\(currentKeyLabel) · ×2")
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                // Секция: Тайминги
+                GSectionHeader("Тайминги")
+                    .padding(.bottom, 10)
+
+                GCard {
+                    GSettingRow("Минимальное время удержания",
+                                showTopDivider: false) {
+                        Menu {
+                            Button("150 мс") { settings.holdMs = 150 }
+                            Button("200 мс") { settings.holdMs = 200 }
+                            Button("300 мс") { settings.holdMs = 300 }
+                        } label: {
+                            GSelectLabel("\(settings.holdMs) мс")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                    }
+                    GSettingRow("Окно двойного нажатия") {
+                        Menu {
+                            Button("200 мс") { settings.doubleTapMs = 200 }
+                            Button("300 мс") { settings.doubleTapMs = 300 }
+                            Button("500 мс") { settings.doubleTapMs = 500 }
+                        } label: {
+                            GSelectLabel("\(settings.doubleTapMs) мс")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
                     }
                 }
-
-                Picker("Минимальное время удержания:", selection: $settings.holdMs) {
-                    Text("150 мс").tag(150)
-                    Text("200 мс").tag(200)
-                    Text("300 мс").tag(300)
-                }
-                Picker("Окно double-tap:", selection: $settings.doubleTapMs) {
-                    Text("200 мс").tag(200)
-                    Text("300 мс").tag(300)
-                    Text("500 мс").tag(500)
-                }
             }
+            .padding(.horizontal, 56)
+            .padding(.vertical, 38)
+            .frame(maxWidth: 712)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
-        .formStyle(.grouped)
-        .navigationTitle("Хоткеи")
+        .onChange(of: capture.captured) { newKeycode in
+            guard let keycode = newKeycode else { return }
+            settings.hotkeyKeycode = keycode
+            coordinator.hotkeys?.updateBinding(keycode: Int64(keycode))
+        }
     }
 }
