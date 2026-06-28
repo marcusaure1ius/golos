@@ -13,7 +13,17 @@ final class AppSettings: ObservableObject {
         var modelId: String { self == .quality ? "e2e_rnnt" : "e2e_ctc" }
     }
 
+    enum ThemeMode: String, CaseIterable, Identifiable {
+        case auto, light, dark
+        var id: String { rawValue }
+        var title: String { ["auto":"Авто","light":"Светлая","dark":"Тёмная"][rawValue]! }
+        var preferredColorScheme: ColorScheme? {
+            switch self { case .auto: return nil; case .light: return .light; case .dark: return .dark }
+        }
+    }
+
     @AppStorage("model.mode")            var modelMode: ModelMode = .quality
+    @AppStorage("ui.themeMode")          var themeMode: ThemeMode = .auto
     @AppStorage("hotkey.holdMs")         var holdMs: Int = 200
     @AppStorage("hotkey.doubleTapMs")    var doubleTapMs: Int = 300
     @AppStorage("hotkey.keycode")        var hotkeyKeycode: Int = 0x3D
