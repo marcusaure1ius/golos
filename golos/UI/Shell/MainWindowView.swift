@@ -2,18 +2,28 @@ import SwiftUI
 
 /// Оболочка главного окна в стиле Codex: серый сайдбар + белый контент
 /// со скруглёнными левыми углами (radius 18) и лёгкой тенью слева.
+///
+/// Тема: `.preferredColorScheme` применяется здесь, на родителе, а контент
+/// (`MainWindowContent`) ниже читает уже **результирующий** `colorScheme`.
+/// Для `.auto` (preferredColorScheme == nil) это настоящая системная тема —
+/// без этого разнесения чтение и навязывание темы в одном вью даёт петлю,
+/// и «Авто» залипает на последней принудительной теме.
 struct MainWindowView: View {
     @ObservedObject private var settings = AppSettings.shared
-    @Environment(\.colorScheme) private var systemScheme
+
+    var body: some View {
+        MainWindowContent()
+            .preferredColorScheme(settings.themeMode.preferredColorScheme)
+    }
+}
+
+private struct MainWindowContent: View {
+    @Environment(\.colorScheme) private var scheme
     @EnvironmentObject private var coordinator: AppCoordinator
     @State private var selection: SidebarSection = .general
 
-    private var effectiveScheme: ColorScheme {
-        settings.themeMode.preferredColorScheme ?? systemScheme
-    }
-
     var body: some View {
-        let p = Palette.of(effectiveScheme)
+        let p = Palette.of(scheme)
         VStack(spacing: 0) {
             // Баннер разрешений (если есть)
             if let issue = coordinator.permissionIssue {
@@ -33,38 +43,30 @@ struct MainWindowView: View {
         }
         .background(p.sidebar)
         .environment(\.palette, p)
-        .preferredColorScheme(settings.themeMode.preferredColorScheme)
         .frame(minWidth: 1000, minHeight: 680)
         .ignoresSafeArea()
     }
 
     @ViewBuilder
     private func contentPane(p: Palette) -> some View {
+        let shape = UnevenRoundedRectangle(
+            topLeadingRadius: 18,
+            bottomLeadingRadius: 18,
+            bottomTrailingRadius: 0,
+            topTrailingRadius: 0
+        )
         ZStack {
             paneView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(p.content)
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 18,
-                bottomLeadingRadius: 18,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: 0
-            )
-        )
+        .clipShape(shape)
         .overlay {
             // Hairline по контуру скруглённого левого края (следует за углами)
-            UnevenRoundedRectangle(
-                topLeadingRadius: 18,
-                bottomLeadingRadius: 18,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: 0
-            )
-            .stroke(p.border, lineWidth: 1)
+            shape.stroke(p.border, lineWidth: 1)
         }
         .shadow(
-            color: effectiveScheme == .dark ? .black.opacity(0.4) : .black.opacity(0.07),
+            color: scheme == .dark ? .black.opacity(0.4) : .black.opacity(0.07),
             radius: 16,
             x: -5
         )
