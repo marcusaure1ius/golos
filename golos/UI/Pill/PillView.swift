@@ -21,6 +21,12 @@ final class PillViewModel: ObservableObject {
         h.append(rms)
         history = h
     }
+
+    /// Сбросить волну амплитуд — при старте новой записи, чтобы новая
+    /// сессия не продолжала предыдущую.
+    func resetHistory() {
+        history = Array(repeating: 0, count: 50)
+    }
 }
 
 struct PillView: View {

@@ -123,6 +123,7 @@ final class AppCoordinator: ObservableObject {
                 dictation.cancelToIdle()
                 return
             }
+            pill.viewModel.resetHistory()
             pill.viewModel.state = .recording(mode: mode)
             pill.show()
             menuBar?.setState(.recording)
@@ -133,6 +134,7 @@ final class AppCoordinator: ObservableObject {
                 dictation.cancelToIdle()
                 return
             }
+            pill.viewModel.resetHistory()
             pill.viewModel.state = .recording(mode: mode)
             pill.show()
             menuBar?.setState(.recording)
