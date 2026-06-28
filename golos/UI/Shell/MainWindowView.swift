@@ -1,29 +1,54 @@
 import SwiftUI
+import AppKit
+
+/// Следит за системной темой (Light/Dark) независимо от того, какой appearance
+/// навязан окну. `NSApp.effectiveAppearance` отражает именно системную настройку
+/// (мы переопределяем appearance окна через `.preferredColorScheme`, а не приложения),
+/// поэтому для режима «Авто» она даёт настоящую системную тему.
+@MainActor
+final class SystemAppearance: ObservableObject {
+    @Published private(set) var scheme: ColorScheme
+    private var token: NSObjectProtocol?
+
+    init() {
+        scheme = SystemAppearance.current()
+        token = DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.scheme = SystemAppearance.current() }
+        }
+    }
+
+    @MainActor static func current() -> ColorScheme {
+        let best = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua])
+        return best == .darkAqua ? .dark : .light
+    }
+}
 
 /// Оболочка главного окна в стиле Codex: серый сайдбар + белый контент
 /// со скруглёнными левыми углами (radius 18) и лёгкой тенью слева.
 ///
-/// Тема: `.preferredColorScheme` применяется здесь, на родителе, а контент
-/// (`MainWindowContent`) ниже читает уже **результирующий** `colorScheme`.
-/// Для `.auto` (preferredColorScheme == nil) это настоящая системная тема —
-/// без этого разнесения чтение и навязывание темы в одном вью даёт петлю,
-/// и «Авто» залипает на последней принудительной теме.
+/// Тема: эффективная схема вычисляется явно (`.light`/`.dark`) — для «Авто»
+/// берётся системная тема из `SystemAppearance`. В `.preferredColorScheme`
+/// всегда уходит явное значение, никогда `nil` — иначе SwiftUI не сбрасывает
+/// ранее навязанный appearance окна и «Авто» залипает на последней теме.
 struct MainWindowView: View {
     @ObservedObject private var settings = AppSettings.shared
-
-    var body: some View {
-        MainWindowContent()
-            .preferredColorScheme(settings.themeMode.preferredColorScheme)
-    }
-}
-
-private struct MainWindowContent: View {
-    @Environment(\.colorScheme) private var scheme
+    @StateObject private var system = SystemAppearance()
     @EnvironmentObject private var coordinator: AppCoordinator
     @State private var selection: SidebarSection = .general
 
+    private var effectiveScheme: ColorScheme {
+        switch settings.themeMode {
+        case .auto:  return system.scheme
+        case .light: return .light
+        case .dark:  return .dark
+        }
+    }
+
     var body: some View {
-        let p = Palette.of(scheme)
+        let p = Palette.of(effectiveScheme)
         VStack(spacing: 0) {
             // Баннер разрешений (если есть)
             if let issue = coordinator.permissionIssue {
@@ -43,6 +68,7 @@ private struct MainWindowContent: View {
         }
         .background(p.sidebar)
         .environment(\.palette, p)
+        .preferredColorScheme(effectiveScheme)
         .frame(minWidth: 1000, minHeight: 680)
         .ignoresSafeArea()
     }
@@ -66,7 +92,7 @@ private struct MainWindowContent: View {
             shape.stroke(p.border, lineWidth: 1)
         }
         .shadow(
-            color: scheme == .dark ? .black.opacity(0.4) : .black.opacity(0.07),
+            color: effectiveScheme == .dark ? .black.opacity(0.4) : .black.opacity(0.07),
             radius: 16,
             x: -5
         )
