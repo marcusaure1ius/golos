@@ -35,8 +35,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             let w = NSWindow(contentViewController: host)
             w.title = "Настройки golos"
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+            w.titlebarAppearsTransparent = true
+            w.titleVisibility = .hidden
+            w.isMovableByWindowBackground = true
+            w.backgroundColor = NSColor.windowBackgroundColor
             w.identifier = NSUserInterfaceItemIdentifier("settings")
-            w.setContentSize(NSSize(width: 920, height: 600))
+            w.setContentSize(NSSize(width: 1000, height: 680))
             w.center()
             w.isReleasedWhenClosed = false
             settingsWindow = w
