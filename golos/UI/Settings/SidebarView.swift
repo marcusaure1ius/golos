@@ -68,7 +68,7 @@ struct SidebarView: View {
             }
             .padding(.horizontal, 8)
         }
-        .frame(minWidth: 200)
+        .frame(width: 250)
         .background(p.sidebar)
     }
 
