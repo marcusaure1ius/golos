@@ -253,7 +253,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -euo pipefail\n\nSIDECAR_SRC=\"${PROJECT_DIR}/golos-asr/target/universal-apple-darwin/release/golos-asr\"\nDEST_DIR=\"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}\"\n\nif [[ ! -f \"$SIDECAR_SRC\" ]]; then\n    echo \"error: golos-asr binary not found at $SIDECAR_SRC\"\n    echo \"       run ./golos-asr/scripts/build-universal.sh first\"\n    exit 1\nfi\n\nmkdir -p \"$DEST_DIR\"\ncp -f \"$SIDECAR_SRC\" \"$DEST_DIR/golos-asr\"\nchmod +x \"$DEST_DIR/golos-asr\"\n\nif [[ -n \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" && \"${EXPANDED_CODE_SIGN_IDENTITY}\" != \"-\" ]]; then\n    codesign --force --options runtime --timestamp \\\\\n        --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" \\\\\n        \"$DEST_DIR/golos-asr\"\nfi\n\necho \"Sidecar copied to $DEST_DIR/golos-asr\"\n";
+			shellScript = "set -euo pipefail\n\nSIDECAR_SRC=\"${PROJECT_DIR}/golos-asr/target/universal-apple-darwin/release/golos-asr\"\nDEST_DIR=\"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}\"\n\nif [[ ! -f \"$SIDECAR_SRC\" ]]; then\n    echo \"error: golos-asr binary not found at $SIDECAR_SRC\"\n    echo \"       run ./golos-asr/scripts/build-universal.sh first\"\n    exit 1\nfi\n\nmkdir -p \"$DEST_DIR\"\ncp -f \"$SIDECAR_SRC\" \"$DEST_DIR/golos-asr\"\nchmod +x \"$DEST_DIR/golos-asr\"\n\nif [[ -n \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" && \"${EXPANDED_CODE_SIGN_IDENTITY}\" != \"-\" ]]; then\n    codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" \"$DEST_DIR/golos-asr\"\nfi\n\necho \"Sidecar copied to $DEST_DIR/golos-asr\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -419,7 +419,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = golos/golos.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "golos-dev";
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
@@ -446,7 +450,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = golos/golos.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "golos-dev";
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
