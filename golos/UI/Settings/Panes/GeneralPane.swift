@@ -107,7 +107,7 @@ struct GeneralPane: View {
             }
             .padding(.horizontal, 56)
             .padding(.vertical, 38)
-            .frame(maxWidth: 656) // 56+56 padding + 544 inner ≈ 600 inner
+            .frame(maxWidth: 712) // 56+56 padding + 600 inner
             .frame(maxWidth: .infinity, alignment: .center)
         }
         .onAppear {
