@@ -3,6 +3,7 @@ docs/
 plan.md
 .superpowers/
 .claude
+.playwright-mcp/
 
 # macOS
 .DS_Store
