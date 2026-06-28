@@ -43,15 +43,30 @@ struct PillView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .background(
-                LinearGradient(colors: [
-                    Color.white.opacity(isError ? 0.12 : 0.22),
-                    Color.white.opacity(isError ? 0.04 : 0.08),
-                ], startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(
+                    colors: isError
+                        ? [Color(red: 0.50, green: 0.12, blue: 0.12).opacity(0.55),
+                           Color(red: 0.30, green: 0.06, blue: 0.06).opacity(0.65)]
+                        : [Color.black.opacity(0.40),
+                           Color.black.opacity(0.55)],
+                    startPoint: .top, endPoint: .bottom
+                )
             )
             .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.white.opacity(isError ? 0.30 : 0.22), lineWidth: 1))
+            .overlay(
+                Capsule().stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(isError ? 0.65 : 0.60),  // яркий блик сверху
+                            Color.white.opacity(isError ? 0.18 : 0.14),  // гаснет книзу
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+            )
             .background(.ultraThinMaterial, in: Capsule())
-            .shadow(color: .black.opacity(0.45), radius: 20, x: 0, y: 12)
+            .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 5)  // деликатная тень
             .frame(width: 300, height: 52)
         }
         .frame(width: 360, height: 96)
@@ -152,10 +167,11 @@ struct PillView: View {
     }
 
     private func barHeight(rms: Float) -> CGFloat {
-        // sqrt-scale: rms=0.01 → 0.1 (~3px), rms=0.05 → 0.22 (~6px), rms=0.2 → 0.45 (~13px),
-        // rms=0.5 → 0.71 (~20px). Clamp в [1.5, 28].
+        // sqrt-scale, потолок = диаметр halo вокруг микрофона (22pt), чтобы громкая
+        // речь визуально доходила до уровня крутящегося кружка.
+        // rms=0.02 → ~11px, rms=0.05 → ~18px, rms=0.08+ → упор в 22px.
         let scaled = sqrt(max(0, Double(rms)))
-        return max(1.5, min(28, CGFloat(scaled) * 28))
+        return max(1.5, min(22, CGFloat(scaled) * 80))
     }
 
     /// 3 пульсирующие точки для transcribing.
