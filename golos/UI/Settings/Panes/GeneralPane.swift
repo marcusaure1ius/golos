@@ -19,39 +19,97 @@ final class GeneralPaneViewModel: ObservableObject {
 struct GeneralPane: View {
     @ObservedObject var settings: AppSettings = .shared
     @StateObject private var vm = GeneralPaneViewModel()
+    @Environment(\.palette) var p
 
     var body: some View {
-        Form {
-            Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Запускать при входе в систему", isOn: $settings.autolaunch)
-                        .onChange(of: settings.autolaunch) { newValue in
-                            if #available(macOS 13.0, *) {
-                                let previous = !newValue
-                                vm.setAutolaunch(newValue)
-                                if vm.autolaunchError != nil {
-                                    settings.autolaunch = previous
-                                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Заголовок панели
+                Text("Общее")
+                    .font(.system(size: 26, weight: .semibold))
+                    .tracking(-0.3)
+                    .foregroundStyle(p.ink)
+                    .padding(.bottom, 28)
+
+                // Секция: Внешний вид
+                GSectionHeader("Внешний вид")
+                    .padding(.bottom, 10)
+
+                GCard {
+                    GSettingRow("Тема", showTopDivider: false) {
+                        Picker("", selection: $settings.themeMode) {
+                            ForEach(AppSettings.ThemeMode.allCases) { mode in
+                                Text(mode.title).tag(mode)
                             }
                         }
-                    if let err = vm.autolaunchError {
-                        Text(err)
-                            .font(.caption)
-                            .foregroundStyle(.red)
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .fixedSize()
                     }
                 }
-                Toggle("Показывать иконку в menu bar", isOn: $settings.menuBarIcon)
-                Toggle("Уведомления", isOn: $settings.notifications)
-                Toggle("Звук при старте/окончании", isOn: $settings.startSound)
+                .padding(.bottom, 24)
+
+                // Секция: Запуск
+                GSectionHeader("Запуск")
+                    .padding(.bottom, 10)
+
+                GCard {
+                    GSettingRow("Запускать при входе в систему", showTopDivider: false) {
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Toggle("", isOn: $settings.autolaunch)
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .tint(p.accent)
+                                .onChange(of: settings.autolaunch) { newValue in
+                                    if #available(macOS 13.0, *) {
+                                        let previous = !newValue
+                                        vm.setAutolaunch(newValue)
+                                        if vm.autolaunchError != nil {
+                                            settings.autolaunch = previous
+                                        }
+                                    }
+                                }
+                            if let err = vm.autolaunchError {
+                                Text(err)
+                                    .font(.caption)
+                                    .foregroundStyle(p.danger)
+                                    .multilineTextAlignment(.trailing)
+                            }
+                        }
+                    }
+                    GSettingRow("Показывать иконку в строке меню") {
+                        Toggle("", isOn: $settings.menuBarIcon)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .tint(p.accent)
+                    }
+                }
+                .padding(.bottom, 24)
+
+                // Секция: Поведение
+                GSectionHeader("Поведение")
+                    .padding(.bottom, 10)
+
+                GCard {
+                    GSettingRow("Уведомления", showTopDivider: false) {
+                        Toggle("", isOn: $settings.notifications)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .tint(p.accent)
+                    }
+                    GSettingRow("Звук при старте и окончании") {
+                        Toggle("", isOn: $settings.startSound)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .tint(p.accent)
+                    }
+                }
             }
-            Section {
-                Text("Все транскрипции выполняются локально. Аудио и текст никуда не отправляются.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            .padding(.horizontal, 56)
+            .padding(.vertical, 38)
+            .frame(maxWidth: 656) // 56+56 padding + 544 inner ≈ 600 inner
+            .frame(maxWidth: .infinity, alignment: .center)
         }
-        .formStyle(.grouped)
-        .navigationTitle("Общее")
         .onAppear {
             if #available(macOS 13.0, *) {
                 settings.autolaunch = Autolaunch.isEnabled
