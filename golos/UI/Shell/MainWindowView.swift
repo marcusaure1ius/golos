@@ -92,9 +92,9 @@ struct MainWindowView: View {
             shape.stroke(p.border, lineWidth: 1)
         }
         .shadow(
-            color: effectiveScheme == .dark ? .black.opacity(0.4) : .black.opacity(0.07),
-            radius: 16,
-            x: -5
+            color: effectiveScheme == .dark ? .black.opacity(0.30) : .black.opacity(0.05),
+            radius: 12,
+            x: -4
         )
     }
 
