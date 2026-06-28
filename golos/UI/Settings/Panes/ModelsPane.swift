@@ -1,47 +1,87 @@
 import SwiftUI
 
 struct ModelsPane: View {
+    @ObservedObject var settings: AppSettings = .shared
     @StateObject private var manager = ModelManager()
     @State private var downloadingId: String?
+    @Environment(\.palette) var p
 
     var body: some View {
-        Form {
-            Section {
-                modelRow(.gigaamRnnt, name: "Качество", meta: "GigaAM-v3 e2e_rnnt · ~340 МБ", isActive: AppSettings.shared.modelMode == .quality)
-                modelRow(.gigaamCtc, name: "Скорость", meta: "GigaAM-v3 e2e_ctc · ~220 МБ", isActive: AppSettings.shared.modelMode == .speed)
-            }
-            if let p = manager.progress, downloadingId != nil {
-                Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Заголовок панели
+                Text("Модели")
+                    .font(.system(size: 26, weight: .semibold))
+                    .tracking(-0.3)
+                    .foregroundStyle(p.ink)
+                    .padding(.bottom, 28)
+
+                // Секция: Модель распознавания
+                GSectionHeader("Модель распознавания",
+                               desc: "Обе работают локально на этом Mac")
+                    .padding(.bottom, 14)
+
+                HStack(spacing: 12) {
+                    radioCard(mode: .quality,
+                              title: "Качество",
+                              subtitle: "GigaAM-v3 · 340 МБ",
+                              desc: .gigaamRnnt)
+                    radioCard(mode: .speed,
+                              title: "Скорость",
+                              subtitle: "GigaAM-v3 · 220 МБ",
+                              desc: .gigaamCtc)
+                }
+
+                // Прогресс загрузки
+                if let prog = manager.progress, downloadingId != nil {
                     VStack(alignment: .leading, spacing: 4) {
-                        ProgressView(value: p.fraction)
-                        Text("\(Int(p.fraction * 100))% — \(formatBytes(p.bytesDownloaded)) / \(formatBytes(p.bytesTotal))")
-                            .font(.caption).foregroundStyle(.secondary)
+                        ProgressView(value: prog.fraction)
+                        Text("\(Int(prog.fraction * 100))% — \(formatBytes(prog.bytesDownloaded)) / \(formatBytes(prog.bytesTotal))")
+                            .font(.caption)
+                            .foregroundStyle(p.muted)
                     }
+                    .padding(.top, 12)
                 }
-            }
-            if let err = manager.error {
-                Section {
+
+                // Ошибка
+                if let err = manager.error {
                     Label(err, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
+                        .font(.system(size: 13))
+                        .foregroundStyle(p.danger)
+                        .padding(.top, 8)
                 }
             }
-            Section {
-                Text("Все модели работают полностью локально.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
+            .padding(.horizontal, 56)
+            .padding(.vertical, 38)
+            .frame(maxWidth: 712)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
-        .formStyle(.grouped)
-        .navigationTitle("Модели")
     }
 
-    private func modelRow(_ desc: ModelDescriptor, name: String, meta: String, isActive: Bool) -> some View {
-        ModelCard(
-            name: name, meta: meta, isActive: isActive,
-            isInstalled: manager.isInstalled(desc),
-            isDownloading: downloadingId == desc.id,
-            onDownload: { Task { await download(desc) } },
-            onDelete: { delete(desc) }
-        )
+    @ViewBuilder
+    private func radioCard(mode: AppSettings.ModelMode,
+                           title: String,
+                           subtitle: String,
+                           desc: ModelDescriptor) -> some View {
+        let isInstalled = manager.isInstalled(desc)
+        let isSelected = settings.modelMode == mode
+        let isDownloading = downloadingId == desc.id
+
+        GRadioCard(title: title, subtitle: subtitle, selected: isSelected) {
+            if !isInstalled {
+                Button(isDownloading ? "Скачиваю…" : "Загрузить") {
+                    Task { await download(desc) }
+                }
+                .buttonStyle(GhostButton())
+                .disabled(isDownloading)
+                .padding(.top, 7) // итого 12pt от subtitle (spacing 5 + pad 7)
+            }
+        }
+        .onTapGesture {
+            if isInstalled {
+                settings.modelMode = mode
+            }
+        }
     }
 
     private func download(_ desc: ModelDescriptor) async {
@@ -58,46 +98,9 @@ struct ModelsPane: View {
     }
 
     private func formatBytes(_ b: Int64) -> String {
-        let f = ByteCountFormatter(); f.allowedUnits = [.useMB, .useGB]; f.countStyle = .file
+        let f = ByteCountFormatter()
+        f.allowedUnits = [.useMB, .useGB]
+        f.countStyle = .file
         return f.string(fromByteCount: b)
-    }
-}
-
-struct ModelCard: View {
-    let name: String
-    let meta: String
-    let isActive: Bool
-    let isInstalled: Bool
-    let isDownloading: Bool
-    let onDownload: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(name).font(.headline)
-                    if isActive { tag("Активна", color: .green) }
-                    if isInstalled { tag("Загружена", color: .gray) }
-                }
-                Text(meta).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            if isInstalled {
-                Button("Удалить", role: .destructive) { onDelete() }
-            } else {
-                Button(isDownloading ? "Скачиваю…" : "Загрузить") { onDownload() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isDownloading)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
-    private func tag(_ s: String, color: Color) -> some View {
-        Text(s).font(.caption2).fontWeight(.semibold)
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
-            .foregroundColor(color)
     }
 }
