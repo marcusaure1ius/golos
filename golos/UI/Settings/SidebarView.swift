@@ -32,7 +32,6 @@ enum SidebarSection: String, Hashable, CaseIterable, Identifiable {
     var disabled: Bool {
         self == .dictionary || self == .stats
     }
-    var disabledLabel: String? { disabled ? "скоро" : nil }
 }
 
 struct SidebarView: View {

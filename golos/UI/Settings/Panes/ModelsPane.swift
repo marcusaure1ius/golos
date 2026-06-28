@@ -95,12 +95,6 @@ struct ModelsPane: View {
         try? await manager.download(desc)
     }
 
-    private func delete(_ desc: ModelDescriptor) {
-        let dir = manager.modelDir(desc.id)
-        do { try FileManager.default.removeItem(at: dir) }
-        catch { manager.surfaceError(error.localizedDescription) }
-    }
-
     private func formatBytes(_ b: Int64) -> String {
         let f = ByteCountFormatter()
         f.allowedUnits = [.useMB, .useGB]
