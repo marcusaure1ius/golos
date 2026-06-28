@@ -31,19 +31,6 @@ enum SidebarSection: String, Hashable, CaseIterable, Identifiable {
         case .about:      return "info.circle"
         }
     }
-    var iconTint: Color {
-        switch self {
-        case .history:    return .blue
-        case .dictionary: return .teal
-        case .stats:      return .purple
-        case .general:    return .gray
-        case .hotkeys:    return .indigo
-        case .microphone: return .red
-        case .models:     return .orange
-        case .privacy:    return .green
-        case .about:      return .cyan
-        }
-    }
     var disabled: Bool {
         self == .dictionary || self == .stats
     }
@@ -52,42 +39,63 @@ enum SidebarSection: String, Hashable, CaseIterable, Identifiable {
 
 struct SidebarView: View {
     @Binding var selection: SidebarSection
-    let dictationGroups: [SidebarSection] = [.history, .dictionary, .stats]
-    let settingsGroups: [SidebarSection] = [.general, .hotkeys, .microphone, .models, .privacy, .about]
+    @Environment(\.palette) var p
+
+    private let transcriptionItems: [SidebarSection] = [.history, .dictionary, .stats]
+    private let settingsItems: [SidebarSection] = [.general, .hotkeys, .microphone, .models, .privacy, .about]
 
     var body: some View {
-        List(selection: $selection) {
-            Section("Транскрипция") {
-                ForEach(dictationGroups) { item(for: $0) }
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Отступ под светофор
+                Spacer().frame(height: 48)
+
+                // Группа «Транскрипция»
+                groupHeader("Транскрипция")
+                ForEach(transcriptionItems) { section in
+                    navRow(for: section)
+                }
+
+                Spacer().frame(height: 16)
+
+                // Группа «Настройки»
+                groupHeader("Настройки")
+                ForEach(settingsItems) { section in
+                    navRow(for: section)
+                }
+
+                Spacer().frame(height: 12)
             }
-            Section("Настройки") {
-                ForEach(settingsGroups) { item(for: $0) }
-            }
+            .padding(.horizontal, 8)
         }
-        .listStyle(.sidebar)
-        .frame(minWidth: 220)
+        .frame(minWidth: 200)
+        .background(p.sidebar)
     }
 
     @ViewBuilder
-    private func item(for s: SidebarSection) -> some View {
-        HStack {
-            ZStack {
-                RoundedRectangle(cornerRadius: 5)
-                    .fill(s.iconTint.gradient)
-                Image(systemName: s.systemImage)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white)
-            }
-            .frame(width: 22, height: 22)
+    private func groupHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12.5, weight: .semibold))
+            .foregroundStyle(p.muted)
+            .padding(.horizontal, 9)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+    }
 
-            Text(s.title)
-
-            if let dl = s.disabledLabel {
-                Spacer()
-                Text(dl).font(.caption).foregroundStyle(.secondary)
-            }
+    @ViewBuilder
+    private func navRow(for section: SidebarSection) -> some View {
+        let isSelected = selection == section
+        GNavRow(
+            icon: section.systemImage,
+            title: section.title,
+            selected: isSelected,
+            disabled: section.disabled,
+            soon: section.disabled
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard !section.disabled else { return }
+            selection = section
         }
-        .opacity(s.disabled ? 0.45 : 1)
-        .tag(s)
     }
 }
