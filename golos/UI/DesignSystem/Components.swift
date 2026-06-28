@@ -58,7 +58,8 @@ struct GSectionHeader: View {
 // MARK: - GSettingRow
 
 /// Строка настройки: .row — label 15/ink + опц. desc 13/muted слева, trailing справа.
-/// Паддинг 15vt × 17hz. Разделитель сверху (скрыть для первой строки — showTopDivider: false).
+/// Паддинг 15vt × 17hz. Разделитель рисуется сверху строки (по умолчанию `showTopDivider: true`).
+/// **Важно**: для первой строки внутри `GCard` передавать `showTopDivider: false`, чтобы не появился лишний hairline у верхнего скругления карточки.
 struct GSettingRow<Trailing: View>: View {
     @Environment(\.palette) var p
     let label: String
@@ -254,7 +255,7 @@ struct GRadioCard<Trailing: View>: View {
                 trailing
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // Отступ справа 17+17+15=49 чтобы текст не налезал на радио-кнопку
+            // Отступ справа = 36 (16+17+3), чтобы текст не налезал на радио-кнопку
             .padding(.leading, 16)
             .padding(.trailing, 16 + 17 + 3)
             .padding(.vertical, 15)
