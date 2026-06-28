@@ -60,6 +60,24 @@ enum AudioDevices {
             guard AudioObjectGetPropertyData(deviceID, &nameAddress, 0, nil, &nameSize, &nameRef) == noErr,
                   let name = nameRef as String? else { continue }
 
+            // Пропускаем служебные устройства, которые не являются реальными микрофонами:
+            // macOS создаёт скрытый агрегат `CADefaultDeviceAggregate-…` при включении
+            // Voice Processing (шумоподавления). Фильтруем по имени/uid и по transport type.
+            if name.hasPrefix("CADefaultDeviceAggregate") || uid.hasPrefix("CADefaultDeviceAggregate") {
+                continue
+            }
+            var transportAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyTransportType,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var transport: UInt32 = 0
+            var transportSize = UInt32(MemoryLayout<UInt32>.size)
+            if AudioObjectGetPropertyData(deviceID, &transportAddress, 0, nil, &transportSize, &transport) == noErr,
+               transport == kAudioDeviceTransportTypeAggregate {
+                continue
+            }
+
             results.append((uid: uid, name: name))
         }
 
