@@ -14,6 +14,7 @@ private struct HistoryRow: View {
     private static let timeFmt: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 
@@ -182,6 +183,7 @@ struct HistoryPane: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
         .background(p.card)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .strokeBorder(p.fieldBorder, lineWidth: 1)
