@@ -40,12 +40,25 @@ import Foundation
     }
 
     @Test func groupingTodayYesterday() {
-        let cal = Calendar(identifier: .gregorian)
-        let now = Date(timeIntervalSince1970: 100 * 86400 + 3600)
+        let cal = Calendar.current
+        let now = Date()
         let today = TranscriptEntry(id: UUID(), text: "t", date: now)
-        let yest = TranscriptEntry(id: UUID(), text: "y", date: now.addingTimeInterval(-86400))
+        let yest = TranscriptEntry(id: UUID(), text: "y", date: cal.date(byAdding: .day, value: -1, to: now)!)
         let g = HistoryStore.grouped([yest, today], calendar: cal, now: now)
+        #expect(g.count == 2)
         #expect(g.first?.label == "Сегодня")
         #expect(g.first?.items.first?.text == "t")
+        #expect(g[1].label == "Вчера")
+        #expect(g[1].items.first?.text == "y")
+    }
+
+    @Test func deleteRemovesById() async {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        let s = HistoryStore(fileURL: url)
+        await s.add(text: "a", date: Date(timeIntervalSince1970: 1))
+        await s.add(text: "b", date: Date(timeIntervalSince1970: 2))
+        let toDelete = await s.all().first { $0.text == "a" }!.id
+        await s.delete(id: toDelete)
+        #expect(await s.all().map(\.text) == ["b"])
     }
 }

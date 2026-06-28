@@ -88,10 +88,9 @@ actor HistoryStore {
 
         for entry in sorted {
             let label: String
-            if calendar.isDate(entry.date, inSameDayAs: now) {
+            if calendar.isDateInToday(entry.date) {
                 label = "Сегодня"
-            } else if calendar.isDate(entry.date, inSameDayAs: now.addingTimeInterval(-86400))
-                        && !calendar.isDate(entry.date, inSameDayAs: now) {
+            } else if calendar.isDateInYesterday(entry.date) {
                 label = "Вчера"
             } else {
                 label = formatter.string(from: entry.date)
@@ -116,6 +115,7 @@ actor HistoryStore {
             try data.write(to: fileURL, options: .atomic)
         } catch {
             // Сбой сохранения — логируем и продолжаем (данные в памяти).
+            Log.coordinator.error("history save failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
