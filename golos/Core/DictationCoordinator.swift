@@ -109,12 +109,8 @@ final class DictationCoordinator: ObservableObject {
                 Log.coordinator.info("finalizing — calling sidecar")
                 let result = try await provider.finalize()
                 Log.coordinator.info("got transcript: '\(result.text, privacy: .public)' (\(result.durationMs, privacy: .public)ms)")
-                if AppSettings.shared.historyEnabled, !result.text.isEmpty {
-                    let days = AppSettings.shared.historyRetentionDays
-                    Task {
-                        await HistoryStore.shared.add(text: result.text, date: Date())
-                        await HistoryStore.shared.prune(retentionDays: days, now: Date())
-                    }
+                if !result.text.isEmpty {
+                    Task { await HistoryStore.shared.add(text: result.text, date: Date()) }
                 }
                 let outcome = await injector.inject(text: result.text)
                 Log.coordinator.info("inject outcome: \(String(describing: outcome), privacy: .public)")

@@ -13,22 +13,14 @@ import Foundation
         #expect(await s2.all().map(\.text) == ["привет"])
     }
 
-    @Test func pruneDropsOld() async {
-        let url = tmp()
+    @Test func capKeepsNewest100AndEvictsOldest() async {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
         let s = HistoryStore(fileURL: url)
-        let now = Date(timeIntervalSince1970: 100 * 86400)
-        await s.add(text: "old", date: now.addingTimeInterval(-40 * 86400))
-        await s.add(text: "new", date: now.addingTimeInterval(-1 * 86400))
-        await s.prune(retentionDays: 30, now: now)
-        #expect(await s.all().map(\.text) == ["new"])
-    }
-
-    @Test func pruneZeroKeepsAll() async {
-        let url = tmp()
-        let s = HistoryStore(fileURL: url)
-        await s.add(text: "x", date: Date(timeIntervalSince1970: 0))
-        await s.prune(retentionDays: 0, now: Date())
-        #expect(await s.all().count == 1)
+        for i in 0..<101 { await s.add(text: "msg\(i)", date: Date(timeIntervalSince1970: Double(i))) }
+        let all = await s.all()
+        #expect(all.count == 100)
+        #expect(all.first?.text == "msg100")        // newest kept
+        #expect(all.contains { $0.text == "msg0" } == false)  // oldest evicted
     }
 
     @Test func searchSubstringCaseInsensitive() async {

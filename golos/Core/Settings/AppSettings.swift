@@ -33,8 +33,6 @@ final class AppSettings: ObservableObject {
     @AppStorage("ui.autolaunch")         var autolaunch: Bool = false
     @AppStorage("ui.menuBarIcon")        var menuBarIcon: Bool = true
     @AppStorage("ui.startSound")         var startSound: Bool = false
-    @AppStorage("history.enabled")       var historyEnabled: Bool = false
-    @AppStorage("history.retentionDays") var historyRetentionDays: Int = 30
     @AppStorage("privacy.diagnostics")   var diagnostics: Bool = false
     @AppStorage("ui.firstRun")           var firstRun: Bool = true
     @AppStorage("ui.onboardingSkipped")  var onboardingSkipped: Bool = false

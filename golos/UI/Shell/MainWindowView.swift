@@ -108,7 +108,6 @@ struct MainWindowView: View {
         case .hotkeys:    HotkeysPane()
         case .microphone: MicrophonePane()
         case .models:     ModelsPane()
-        case .privacy:    PrivacyPane()
         case .about:      AboutPane()
         }
     }

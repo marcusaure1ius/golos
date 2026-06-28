@@ -9,6 +9,7 @@ actor HistoryStore {
 
     // MARK: - State
 
+    private let maxEntries = 100
     private let fileURL: URL
     /// nil = ещё не загружали с диска (ленивая загрузка).
     private var _entries: [TranscriptEntry]?
@@ -33,13 +34,16 @@ actor HistoryStore {
         entries
     }
 
-    /// Добавляет новую запись в начало списка и сохраняет на диск.
+    /// Добавляет новую запись в начало списка, обрезает до maxEntries и сохраняет на диск.
     func add(text: String, date: Date) {
         let entry = TranscriptEntry(id: UUID(), text: text, date: date)
         if _entries == nil {
             _entries = Self.load(from: fileURL)
         }
         _entries!.insert(entry, at: 0)
+        if _entries!.count > maxEntries {
+            _entries = Array(_entries!.prefix(maxEntries))
+        }
         save()
     }
 
@@ -47,15 +51,6 @@ actor HistoryStore {
     func delete(id: UUID) {
         if _entries == nil { _entries = Self.load(from: fileURL) }
         _entries!.removeAll { $0.id == id }
-        save()
-    }
-
-    /// Удаляет записи старше `retentionDays` дней. 0 = не удалять ничего.
-    func prune(retentionDays: Int, now: Date) {
-        guard retentionDays > 0 else { return }
-        if _entries == nil { _entries = Self.load(from: fileURL) }
-        let cutoff = now.addingTimeInterval(Double(-retentionDays) * 86400)
-        _entries!.removeAll { $0.date < cutoff }
         save()
     }
 

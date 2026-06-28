@@ -83,7 +83,6 @@ private struct HistoryIconButton: View {
 // MARK: - Панель «История»
 
 struct HistoryPane: View {
-    @ObservedObject var settings: AppSettings = .shared
     @Environment(\.palette) var p
 
     @State private var entries: [TranscriptEntry] = []
@@ -123,12 +122,7 @@ struct HistoryPane: View {
                     .padding(.top, 18)
 
                 // Контент
-                if !settings.historyEnabled {
-                    emptyState(
-                        title: "История выключена",
-                        subtitle: "Включи сохранение истории в разделе Приватность."
-                    )
-                } else if entries.isEmpty {
+                if entries.isEmpty {
                     emptyState(
                         title: "Пока нет записей",
                         subtitle: "Подиктуй что-нибудь, и записи появятся здесь."
