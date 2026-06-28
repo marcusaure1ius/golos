@@ -67,9 +67,9 @@ struct PillView: View {
             )
             .background(.ultraThinMaterial, in: Capsule())
             .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 5)  // деликатная тень
-            .frame(width: 300, height: 52)
+            .frame(width: 340, height: 52)
         }
-        .frame(width: 360, height: 96)
+        .frame(width: 400, height: 96)
     }
 
     // MARK: - State helpers
