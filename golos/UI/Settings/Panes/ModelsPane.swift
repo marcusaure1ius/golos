@@ -21,16 +21,19 @@ struct ModelsPane: View {
                                desc: "Обе работают локально на этом Mac")
                     .padding(.bottom, 14)
 
+                // fixedSize(vertical:true) + maxHeight:.infinity на каждой карточке
+                // выравнивает высоту по самой высокой (той, где есть кнопка «Загрузить»).
                 HStack(spacing: 12) {
                     radioCard(mode: .quality,
                               title: "Качество",
-                              subtitle: "GigaAM-v3 · 340 МБ",
+                              subtitle: "GigaAM-v3\n340 МБ",
                               desc: .gigaamRnnt)
                     radioCard(mode: .speed,
                               title: "Скорость",
-                              subtitle: "GigaAM-v3 · 220 МБ",
+                              subtitle: "GigaAM-v3\n220 МБ",
                               desc: .gigaamCtc)
                 }
+                .fixedSize(horizontal: false, vertical: true)
 
                 // Прогресс загрузки
                 if let prog = manager.progress, downloadingId != nil {
@@ -77,6 +80,7 @@ struct ModelsPane: View {
                 .padding(.top, 7) // итого 12pt от subtitle (spacing 5 + pad 7)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onTapGesture {
             if isInstalled {
                 settings.modelMode = mode

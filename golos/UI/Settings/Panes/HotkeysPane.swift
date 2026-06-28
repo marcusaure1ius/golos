@@ -145,6 +145,7 @@ struct HotkeysPane: View {
                             GSelectLabel("\(settings.holdMs) мс")
                         }
                         .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
                         .fixedSize()
                     }
                     GSettingRow("Окно двойного нажатия") {
@@ -156,6 +157,7 @@ struct HotkeysPane: View {
                             GSelectLabel("\(settings.doubleTapMs) мс")
                         }
                         .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
                         .fixedSize()
                     }
                 }

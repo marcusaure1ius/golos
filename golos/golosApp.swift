@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             w.titlebarAppearsTransparent = true
             w.titleVisibility = .hidden
-            w.isMovableByWindowBackground = true
+            w.isMovableByWindowBackground = false
             w.backgroundColor = NSColor.windowBackgroundColor
             w.identifier = NSUserInterfaceItemIdentifier("settings")
             w.setContentSize(NSSize(width: 1000, height: 680))

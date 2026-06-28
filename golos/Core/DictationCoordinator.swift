@@ -81,6 +81,7 @@ final class DictationCoordinator: ObservableObject {
                 // перезаписывать поверх.
                 if case .preparing(let m) = self.state {
                     self.state = .recording(mode: m, startedAt: started)
+                    Sounds.recordStart()
                 }
             } catch {
                 if case .preparing = self.state {
@@ -99,6 +100,7 @@ final class DictationCoordinator: ObservableObject {
             Task { await provider.cancel() }
             return
         }
+        Sounds.recordStop()
         state = .transcribing
         Task {
             do {

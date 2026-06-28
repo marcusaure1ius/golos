@@ -77,12 +77,6 @@ struct GeneralPane: View {
                             }
                         }
                     }
-                    GSettingRow("Показывать иконку в строке меню") {
-                        Toggle("", isOn: $settings.menuBarIcon)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .tint(p.accent)
-                    }
                 }
                 .padding(.bottom, 24)
 

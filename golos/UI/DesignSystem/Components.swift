@@ -189,9 +189,11 @@ struct DangerButton: ButtonStyle {
 // MARK: - GSelectLabel
 
 /// Метка для Menu: рамка fieldBorder, шеврон, серый текст. (.select)
+/// При наведении — лёгкий фон selection, как у нативных popUp-контролов.
 struct GSelectLabel: View {
     @Environment(\.palette) var p
     let value: String
+    @State private var hovering = false
 
     init(_ value: String) {
         self.value = value
@@ -211,12 +213,13 @@ struct GSelectLabel: View {
         .padding(.trailing, 9)
         .padding(.vertical, 6)
         .frame(minWidth: 120)
-        .background(p.card)
+        .background(hovering ? p.selection : p.card)
         .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .strokeBorder(p.fieldBorder, lineWidth: 1)
         )
+        .onHover { hovering = $0 }
     }
 }
 
@@ -275,6 +278,9 @@ struct GRadioCard<Trailing: View>: View {
             .padding(.top, 15)
             .padding(.trailing, 15)
         }
+        // .frame перед .background — позволяет растянуть фон на всю доступную высоту
+        // (используется в ModelsPane для карточек одинаковой высоты).
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(selected ? p.cardSel : p.card)
         .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
         .overlay(

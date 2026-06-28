@@ -42,24 +42,9 @@ struct PrivacyPane: View {
                             GSelectLabel(retentionLabel)
                         }
                         .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
                         .fixedSize()
                         .disabled(!settings.historyEnabled)
-                    }
-                }
-                .padding(.bottom, 24)
-
-                // Секция: Диагностика
-                GSectionHeader("Диагностика")
-                    .padding(.bottom, 10)
-
-                GCard {
-                    GSettingRow("Анонимная диагностика",
-                                desc: "Помогает находить ошибки. Без текста и аудио.",
-                                showTopDivider: false) {
-                        Toggle("", isOn: $settings.diagnostics)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .tint(p.accent)
                     }
                 }
                 .padding(.bottom, 16)

@@ -32,6 +32,7 @@ struct MicrophonePane: View {
                             GSelectLabel(currentDeviceName)
                         }
                         .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
                         .fixedSize()
                     }
                     .onChange(of: settings.deviceUid) { newUid in

@@ -3,6 +3,9 @@ import AppKit
 
 struct AboutPane: View {
     @Environment(\.palette) var p
+    @State private var hoverGithub = false
+    @State private var hoverDocs = false
+    @State private var hoverBug = false
 
     // Высоты баров декоративной вейвформы из мокапа (34 бара, 5..32px)
     private let waveHeights: [CGFloat] = [
@@ -84,28 +87,38 @@ struct AboutPane: View {
             .padding(.top, 32)
 
             // Ссылки: GitHub, Документация, Сообщить об ошибке
-            HStack(spacing: 10) {
+            // Без рамки/фона — только цвет muted→ink при наведении.
+            HStack(spacing: 24) {
                 Button {
                     NSWorkspace.shared.open(URL(string: "https://github.com/")!)
                 } label: {
                     // GitHub не имеет нативного SF Symbol — используем символ кода
                     Label("GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                        .foregroundStyle(hoverGithub ? p.ink : p.muted)
+                        .font(.system(size: 13.5))
                 }
-                .buttonStyle(GhostButton())
+                .buttonStyle(.plain)
+                .onHover { hoverGithub = $0 }
 
                 Button {
                     NSWorkspace.shared.open(URL(string: "https://github.com/")!)
                 } label: {
                     Label("Документация", systemImage: "book")
+                        .foregroundStyle(hoverDocs ? p.ink : p.muted)
+                        .font(.system(size: 13.5))
                 }
-                .buttonStyle(GhostButton())
+                .buttonStyle(.plain)
+                .onHover { hoverDocs = $0 }
 
                 Button {
                     NSWorkspace.shared.open(URL(string: "https://github.com/")!)
                 } label: {
                     Label("Сообщить об ошибке", systemImage: "exclamationmark.bubble")
+                        .foregroundStyle(hoverBug ? p.ink : p.muted)
+                        .font(.system(size: 13.5))
                 }
-                .buttonStyle(GhostButton())
+                .buttonStyle(.plain)
+                .onHover { hoverBug = $0 }
             }
             .padding(.top, 30)
 
