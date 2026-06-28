@@ -35,6 +35,7 @@ struct MainWindowView: View {
         .environment(\.palette, p)
         .preferredColorScheme(settings.themeMode.preferredColorScheme)
         .frame(minWidth: 1000, minHeight: 680)
+        .ignoresSafeArea()
     }
 
     @ViewBuilder
@@ -52,11 +53,15 @@ struct MainWindowView: View {
                 topTrailingRadius: 0
             )
         )
-        .overlay(alignment: .leading) {
-            // Однопиксельный hairline по левому краю контентной области
-            Rectangle()
-                .fill(p.border)
-                .frame(width: 1)
+        .overlay {
+            // Hairline по контуру скруглённого левого края (следует за углами)
+            UnevenRoundedRectangle(
+                topLeadingRadius: 18,
+                bottomLeadingRadius: 18,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 0
+            )
+            .stroke(p.border, lineWidth: 1)
         }
         .shadow(
             color: effectiveScheme == .dark ? .black.opacity(0.4) : .black.opacity(0.07),
