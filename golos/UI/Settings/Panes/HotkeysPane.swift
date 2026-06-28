@@ -83,7 +83,7 @@ struct HotkeysPane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Заголовок панели
-                Text("Хоткеи")
+                Text("Горячие клавиши")
                     .font(.system(size: 26, weight: .semibold))
                     .tracking(-0.3)
                     .foregroundStyle(p.ink)

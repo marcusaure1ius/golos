@@ -11,7 +11,7 @@ enum SidebarSection: String, Hashable, CaseIterable, Identifiable {
         case .dictionary: return "Словарь"
         case .stats:      return "Статистика"
         case .general:    return "Общее"
-        case .hotkeys:    return "Хоткеи"
+        case .hotkeys:    return "Горячие клавиши"
         case .microphone: return "Микрофон"
         case .models:     return "Модели"
         case .about:      return "О приложении"
