@@ -34,4 +34,9 @@ enum AppPaths {
     static var logFile: URL {
         appSupport.appendingPathComponent("golos.log")
     }
+
+    /// Файл хранилища истории транскрипций.
+    static var historyFile: URL {
+        appSupport.appendingPathComponent("history.json")
+    }
 }
