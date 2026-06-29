@@ -32,7 +32,7 @@ final class PillWindow {
         )
         w.isFloatingPanel = true
         w.level = .statusBar
-        w.collectionBehavior = [.canJoinAllSpaces, .ignoresCycle, .stationary]
+        w.collectionBehavior = [.canJoinAllSpaces, .ignoresCycle]
         w.backgroundColor = .clear
         w.isOpaque = false
         w.hasShadow = false
