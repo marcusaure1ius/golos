@@ -83,7 +83,6 @@ final class LocalGigaAMProvider: TranscriptionProvider {
     private var process: Process?
     private var stdinHandle: FileHandle?
     private var stdoutHandle: FileHandle?
-    private var stderrHandle: FileHandle?
 
     /// FIFO для аудио (Swift пишет → sidecar читает). Sidecar получает path через
     /// `--audio-path`, оба процесса открывают по нему свои концы.
@@ -258,10 +257,20 @@ final class LocalGigaAMProvider: TranscriptionProvider {
 
         let stdin = Pipe()
         let stdout = Pipe()
-        let stderr = Pipe()
         proc.standardInput = stdin
         proc.standardOutput = stdout
-        proc.standardError = stderr
+        // stderr → файл, НЕ pipe. onnxruntime (через ort) при создании сессии
+        // выдаёт огромный flood в stderr. Раньше app дренировал его через
+        // FileHandle.bytes.lines, но болтливая версия runtime переполняла pipe
+        // быстрее, чем шёл дренаж → sidecar блокировался на write(stderr) и НЕ
+        // отправлял Final → finalize висел 30s. Файл буферизуется ОС и не блокирует.
+        let stderrLog = AppPaths.appSupport.appendingPathComponent("sidecar-stderr.log")
+        FileManager.default.createFile(atPath: stderrLog.path, contents: nil)
+        if let fh = try? FileHandle(forWritingTo: stderrLog) {
+            proc.standardError = fh
+        } else {
+            proc.standardError = FileHandle.nullDevice
+        }
 
         do {
             try proc.run()
@@ -274,7 +283,6 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         process = proc
         stdinHandle = stdin.fileHandleForWriting
         stdoutHandle = stdout.fileHandleForReading
-        stderrHandle = stderr.fileHandleForReading
         writer = AudioWriter(fd: writeFd)
         audioFifoPath = fifoPath
 
@@ -304,13 +312,8 @@ final class LocalGigaAMProvider: TranscriptionProvider {
                 }
             }.value
         }
-        // Логирование stderr — отдельная задача.
-        let errHandle = stderrHandle!
-        Task.detached {
-            for try await line in errHandle.bytes.lines {
-                Log.sidecar.debug("\(line, privacy: .public)")
-            }
-        }
+        // stderr sidecar пишется напрямую в файл (sidecar-stderr.log) — отдельная
+        // задача-дренаж не нужна и опасна (переполнение pipe блокировало sidecar).
     }
 
     private static func readResponseLoop(
