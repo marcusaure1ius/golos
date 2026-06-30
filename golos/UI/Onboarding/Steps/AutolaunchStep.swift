@@ -8,7 +8,7 @@ struct AutolaunchStep: View {
             iconColors: [.green, .mint],
             icon: "power",
             title: "Запускать при входе?",
-            subtitle: "Чтобы golos был готов сразу — не запускать его вручную каждый раз."
+            subtitle: "Чтобы Golos был готов сразу — не запускать его вручную каждый раз."
         ) {
             VStack(spacing: 8) {
                 BigChoiceButton(

@@ -14,7 +14,7 @@ struct AccessibilityStep: View {
             VStack(alignment: .leading, spacing: 12) {
                 NumberedSteps(items: [
                     "Открой System Settings → Privacy & Security → Accessibility",
-                    "Найди golos и включи переключатель",
+                    "Найди Golos и включи переключатель",
                     "Вернись сюда — статус обновится автоматически"
                 ])
                 HStack(spacing: 10) {

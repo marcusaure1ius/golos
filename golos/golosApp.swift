@@ -33,7 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             let host = NSHostingController(rootView: SettingsRoot()
                 .environmentObject(coordinator))
             let w = NSWindow(contentViewController: host)
-            w.title = "Настройки golos"
+            w.title = "Настройки Golos"
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             w.titlebarAppearsTransparent = true
             w.titleVisibility = .hidden
@@ -54,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             let host = NSHostingController(rootView: OnboardingRoot()
                 .environmentObject(coordinator))
             let w = NSWindow(contentViewController: host)
-            w.title = "Настройка golos"
+            w.title = "Настройка Golos"
             w.styleMask = [.titled, .closable, .fullSizeContentView]
             w.identifier = NSUserInterfaceItemIdentifier("onboarding")
             w.setContentSize(NSSize(width: 580, height: 580))

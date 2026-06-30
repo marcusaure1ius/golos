@@ -60,7 +60,7 @@ final class MenuBarController {
         openItem.target = target
         menu.addItem(openItem)
         menu.addItem(NSMenuItem.separator())
-        let quitItem = NSMenuItem(title: "Выйти из golos", action: #selector(MenuBarTarget.quit(_:)), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Выйти из Golos", action: #selector(MenuBarTarget.quit(_:)), keyEquivalent: "q")
         quitItem.target = target
         menu.addItem(quitItem)
         return menu

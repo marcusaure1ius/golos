@@ -15,7 +15,7 @@ struct InputMonitoringStep: View {
                 VStack(alignment: .leading, spacing: 12) {
                     NumberedSteps(items: [
                         "System Settings → Privacy & Security → Input Monitoring",
-                        "Включи golos"
+                        "Включи Golos"
                     ])
                     HStack(spacing: 10) {
                         Button("Открыть System Settings") { Permissions.openInputMonitoringSettings() }
@@ -26,7 +26,7 @@ struct InputMonitoringStep: View {
                 .padding(14)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
 
-                Text("Это разрешение нужно только для одной клавиши — Right Option. golos не читает ничего из того, что ты печатаешь.")
+                Text("Это разрешение нужно только для одной клавиши — Right Option. Golos не читает ничего из того, что ты печатаешь.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }

@@ -41,7 +41,7 @@ struct AboutPane: View {
             .frame(width: 98, height: 98)
 
             // Название
-            Text("Голос")
+            Text("Golos")
                 .font(.system(size: 34, weight: .semibold))
                 .tracking(-0.68) // letter-spacing: -.02em × 34pt
                 .foregroundStyle(p.ink)
@@ -123,7 +123,7 @@ struct AboutPane: View {
             .padding(.top, 30)
 
             // Копирайт
-            Text("© 2026 · Голос")
+            Text("© 2026 · Golos")
                 .font(.system(size: 12))
                 .foregroundStyle(p.muted2)
                 .padding(.top, 26)
