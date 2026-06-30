@@ -67,10 +67,15 @@ xcodebuild test -project golos.xcodeproj -scheme golos \
 ## Speech model
 
 The GigaAM-v3 weights are **not** bundled in this repository — they are
-downloaded on first run. The model is published by SaluteDevices and is subject
-to **its own license**, separate from this project's MIT license. Review and
-comply with the model's license before redistributing weights or shipping a
-build that downloads them.
+downloaded on first run.
+
+- The GigaAM-v3 model is published by **SaluteDevices** (Sber) under the
+  **MIT License** (since 2024-12) — commercial use, redistribution and
+  fine-tuning are permitted, provided attribution is retained.
+  Source: [salute-developers/GigaAM](https://github.com/salute-developers/GigaAM).
+- The weights are downloaded in **ONNX** form from a third-party conversion,
+  [istupakov/gigaam-v3-onnx](https://huggingface.co/istupakov/gigaam-v3-onnx),
+  also MIT-licensed and attributing the original.
 
 ## License
 

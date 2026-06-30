@@ -18,7 +18,11 @@ Source: https://github.com/microsoft/onnxruntime
 ## Speech model
 
 GigaAM-v3 weights are **not** bundled in this repository; they are downloaded on first
-run from a third-party mirror. The model is subject to its own license — see the README.
+run. The model is published by **SaluteDevices** (Sber) under the **MIT License**
+(https://github.com/salute-developers/GigaAM). The weights are fetched in ONNX form from
+a third-party MIT-licensed conversion, https://huggingface.co/istupakov/gigaam-v3-onnx,
+which attributes the original. MIT permits commercial use and redistribution with
+attribution retained.
 
 ## Rust crates
 
