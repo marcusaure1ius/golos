@@ -85,28 +85,31 @@ final class AppCoordinator: ObservableObject {
             }
         }
 
-        // Warmup модели если она установлена; иначе — открыть onboarding.
-        let modelId = ModelDescriptor.gigaam.id
-        let dir = AppPaths.modelDir(modelId)
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            if FileManager.default.fileExists(atPath: dir.appendingPathComponent("model.onnx").path) {
-                do {
-                    try await self.dictation.warmup(modelDir: dir)
-                    Log.coordinator.info("warmup succeeded for \(modelId, privacy: .public)")
-                    // Прогрев Voice Processing AU — иначе первый start() блокирует MainActor на 2-3s.
-                    self.audio.prewarm()
-                } catch {
-                    Log.coordinator.error("warmup failed: \(error.localizedDescription, privacy: .public)")
-                }
-            } else {
-                Log.coordinator.info("model not installed; awaiting onboarding")
-            }
-        }
+        // Warmup модели если она установлена; иначе onboarding скачает и прогреет.
+        Task { @MainActor [weak self] in await self?.warmupModelIfAvailable() }
 
         // Onboarding на первом запуске
         if AppSettings.shared.firstRun {
             openOnboarding()
+        }
+    }
+
+    /// Грузит модель в sidecar и прогревает аудио, если модель уже скачана.
+    /// Идемпотентно (warmup сам по себе идемпотентен). Зовётся при старте и
+    /// после скачивания модели в онбординге.
+    func warmupModelIfAvailable() async {
+        let dir = AppPaths.modelDir(ModelDescriptor.gigaam.id)
+        guard FileManager.default.fileExists(atPath: dir.appendingPathComponent("model.onnx").path) else {
+            Log.coordinator.info("model not installed; awaiting onboarding")
+            return
+        }
+        do {
+            try await dictation.warmup(modelDir: dir)
+            Log.coordinator.info("warmup succeeded")
+            // Прогрев Voice Processing AU — иначе первый start() блокирует MainActor 2-3s.
+            audio.prewarm()
+        } catch {
+            Log.coordinator.error("warmup failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

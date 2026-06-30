@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ModelStep: View {
     @ObservedObject var vm: OnboardingViewModel
+    @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var manager = ModelManager()
     @State private var isDownloading = false
 
@@ -64,6 +65,7 @@ struct ModelStep: View {
         do {
             try await manager.download(model)
             vm.modelReady = manager.isInstalled(model)
+            await coordinator.warmupModelIfAvailable()
         } catch { /* ошибка показывается через manager.error */ }
     }
 }
