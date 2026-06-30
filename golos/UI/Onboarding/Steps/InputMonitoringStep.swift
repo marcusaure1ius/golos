@@ -2,34 +2,34 @@ import SwiftUI
 
 struct InputMonitoringStep: View {
     @State private var granted: Bool = Permissions.inputMonitoringGranted()
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         StepLayout(
-            iconColors: [.indigo, .purple],
+            iconColors: granted ? [.green, .mint] : [.indigo, .purple],
             icon: "keyboard",
-            title: "Доступ к клавиатуре",
+            title: "Дай поймать горячую клавишу",
             subtitle: "Чтобы реагировать на твой хоткей в любом приложении."
         ) {
+            PermissionScene(granted: granted, iconColors: granted ? [.green, .mint] : [.indigo, .purple], icon: "keyboard")
+        } content: {
             VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 12) {
+                if granted {
+                    Label("Доступ открыт", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 13, weight: .medium)).foregroundStyle(.green)
+                } else {
                     NumberedSteps(items: [
                         "System Settings → Privacy & Security → Input Monitoring",
                         "Включи Golos"
                     ])
-                    HStack(spacing: 10) {
-                        Button("Открыть System Settings") { Permissions.openInputMonitoringSettings() }
-                            .buttonStyle(.borderedProminent)
-                        PermStatusPill(granted: granted, pendingText: "Ожидаю включения…")
-                    }
+                    Button("Открыть System Settings") { Permissions.openInputMonitoringSettings() }
+                        .buttonStyle(.borderedProminent)
+                    Text("Это разрешение нужно только для одной клавиши — Right Option. Golos не читает ничего из того, что ты печатаешь.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
                 }
-                .padding(14)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
-
-                Text("Это разрешение нужно только для одной клавиши — Right Option. Golos не читает ничего из того, что ты печатаешь.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
             }
+            .padding(.top, 6)
         }
         .onAppear {
             // Регистрируем намерение получить Input Monitoring — это добавляет golos

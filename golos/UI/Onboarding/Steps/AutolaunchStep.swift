@@ -7,9 +7,11 @@ struct AutolaunchStep: View {
         StepLayout(
             iconColors: [.green, .mint],
             icon: "power",
-            title: "Запускать при входе?",
+            title: "Запускать вместе с Mac?",
             subtitle: "Чтобы Golos был готов сразу — не запускать его вручную каждый раз."
         ) {
+            PermissionScene(granted: false, iconColors: [.green, .mint], icon: "power")
+        } content: {
             VStack(spacing: 8) {
                 BigChoiceButton(
                     iconName: "checkmark", iconColors: [.green, .mint],

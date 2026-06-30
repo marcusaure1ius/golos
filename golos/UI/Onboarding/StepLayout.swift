@@ -73,6 +73,27 @@ struct PermStatusPill: View {
     private var color: Color { granted ? .green : .orange }
 }
 
+/// Сцена правой панели для permission-шагов без аудио: тайл-иконка в кольцах.
+struct PermissionScene: View {
+    let granted: Bool
+    let iconColors: [Color]
+    let icon: String
+    var body: some View {
+        ZStack {
+            ForEach(0..<3) { i in
+                Circle()
+                    .stroke((granted ? Color.green : iconColors.first ?? .blue).opacity(0.28 - Double(i) * 0.08), lineWidth: 1.5)
+                    .frame(width: 90 + CGFloat(i) * 54, height: 90 + CGFloat(i) * 54)
+            }
+            RoundedRectangle(cornerRadius: 22)
+                .fill(LinearGradient(colors: granted ? [.green, .mint] : iconColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: 78, height: 78)
+                .overlay(Image(systemName: granted ? "checkmark" : icon).font(.system(size: 30, weight: .semibold)).foregroundColor(.white))
+                .shadow(color: (granted ? Color.green : iconColors.first ?? .blue).opacity(0.5), radius: 18, y: 8)
+        }
+    }
+}
+
 /// Карточка с цветным иконом + label/meta + slot справа (status / progress).
 struct PermCard<Trailing: View>: View {
     let iconColors: [Color]

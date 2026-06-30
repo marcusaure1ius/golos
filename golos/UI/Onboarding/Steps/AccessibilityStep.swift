@@ -2,29 +2,32 @@ import SwiftUI
 
 struct AccessibilityStep: View {
     @State private var granted: Bool = Permissions.accessibilityGranted()
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         StepLayout(
-            iconColors: [.blue, .indigo],
+            iconColors: granted ? [.green, .mint] : [.blue, .indigo],
             icon: "person.fill",
-            title: "Универсальный доступ",
+            title: "Разреши вставлять текст",
             subtitle: "Чтобы я мог вставлять текст в приложения, в которые ты диктуешь."
         ) {
+            PermissionScene(granted: granted, iconColors: granted ? [.green, .mint] : [.blue, .indigo], icon: "accessibility")
+        } content: {
             VStack(alignment: .leading, spacing: 12) {
-                NumberedSteps(items: [
-                    "Открой System Settings → Privacy & Security → Accessibility",
-                    "Найди Golos и включи переключатель",
-                    "Вернись сюда — статус обновится автоматически"
-                ])
-                HStack(spacing: 10) {
+                if granted {
+                    Label("Доступ открыт", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 13, weight: .medium)).foregroundStyle(.green)
+                } else {
+                    NumberedSteps(items: [
+                        "System Settings → Privacy & Security → Accessibility",
+                        "Найди Golos и включи переключатель",
+                        "Вернись сюда — статус обновится автоматически"
+                    ])
                     Button("Открыть System Settings") { Permissions.openAccessibilitySettings() }
                         .buttonStyle(.borderedProminent)
-                    PermStatusPill(granted: granted, pendingText: "Ожидаю включения…")
                 }
             }
-            .padding(14)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
+            .padding(.top, 6)
         }
         .onAppear {
             // Триггерим системный prompt — это также добавляет golos в список Accessibility,

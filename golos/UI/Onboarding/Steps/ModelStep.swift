@@ -21,6 +21,20 @@ struct ModelStep: View {
             title: "Модель распознавания",
             subtitle: "Распознавание работает локально. Модель скачается один раз."
         ) {
+            ZStack {
+                Circle().stroke(Color.secondary.opacity(0.15), lineWidth: 8).frame(width: 120, height: 120)
+                if let p = manager.progress, isDownloading {
+                    Circle().trim(from: 0, to: p.fraction)
+                        .stroke(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom),
+                                style: .init(lineWidth: 8, lineCap: .round))
+                        .rotationEffect(.degrees(-90)).frame(width: 120, height: 120)
+                    Text("\(Int(p.fraction * 100))%").font(.system(size: 22, weight: .bold))
+                } else {
+                    Image(systemName: manager.isInstalled(model) ? "checkmark.circle.fill" : "shippingbox.fill")
+                        .font(.system(size: 44)).foregroundStyle(manager.isInstalled(model) ? .green : .orange)
+                }
+            }
+        } content: {
             VStack(spacing: 8) {
                 ModelRow(
                     name: model.displayName,
