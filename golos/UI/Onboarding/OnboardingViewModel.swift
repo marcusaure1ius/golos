@@ -5,6 +5,9 @@ final class OnboardingViewModel: ObservableObject {
     @Published var currentStep: Int = 1
     @Published var modelReady: Bool = false
     @Published var didExplicitlySkipModel: Bool = false
+    /// Выбор на шаге автозапуска (nil — ещё не выбрано). Хранится в vm, а не в
+    /// шаге, чтобы выбор не сбрасывался при уходе/возврате (шаг пересоздаётся по .id).
+    @Published var autolaunchChoice: Bool? = nil
     let totalSteps = 7
 
     var stepTitle: String {

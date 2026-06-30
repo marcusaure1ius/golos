@@ -35,7 +35,7 @@ struct OnboardingRoot: View {
                 case 3: AccessibilityStep()
                 case 4: InputMonitoringStep()
                 case 5: ModelStep(vm: vm)
-                case 6: AutolaunchStep(onChoice: { _ in vm.next() })
+                case 6: AutolaunchStep(vm: vm, onChoice: { _ in vm.next() })
                 case 7: DemoStep(vm: vm)
                 default: EmptyView()
                 }

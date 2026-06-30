@@ -81,16 +81,27 @@ struct DemoStep: View {
 /// Демо-поле ввода (фокус-таргет для реальной вставки).
 private struct DemoField: View {
     @Binding var text: String
+    @FocusState private var focused: Bool
     var body: some View {
         ZStack(alignment: .topLeading) {
             if text.isEmpty {
-                Text("Здесь появится твой текст…").foregroundStyle(.secondary).padding(14)
+                // Выровнено с местом, где TextEditor рисует текст/каретку
+                // (padding 8 + ~5 lineFragmentPadding по горизонтали).
+                Text("Здесь появится твой текст…")
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 13).padding(.top, 8)
+                    .allowsHitTesting(false)
             }
-            TextEditor(text: $text).scrollContentBackground(.hidden).padding(8)
+            TextEditor(text: $text)
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .focused($focused)
         }
         .frame(minHeight: 110)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(.secondary.opacity(0.25), lineWidth: 1))
+        // Сразу фокус на поле — чтобы вставка попадала именно сюда и каретка была видна.
+        .onAppear { DispatchQueue.main.async { focused = true } }
     }
 }
 

@@ -22,6 +22,9 @@ struct WaveformView: View {
     var live: Bool
     var barCount: Int = 7
     var maxHeight: CGFloat = 90
+    /// Усиление уровня перед отрисовкой: RMS речи мал (~0.05–0.2), без gain
+    /// столбики почти не видны. Клампится в [0,1] внутри.
+    var gain: Float = 6
 
     private let idleColor = Color(hex: 0xc7c7cc)
     private var liveGradient: LinearGradient {
@@ -30,7 +33,8 @@ struct WaveformView: View {
     }
 
     var body: some View {
-        let heights = Waveform.barHeights(levels: levels, count: barCount, maxHeight: maxHeight)
+        let amplified = levels.map { Swift.min(1, $0 * gain) }
+        let heights = Waveform.barHeights(levels: amplified, count: barCount, maxHeight: maxHeight)
         HStack(spacing: 5) {
             ForEach(Array(heights.enumerated()), id: \.offset) { _, h in
                 Capsule()
