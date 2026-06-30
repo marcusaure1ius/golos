@@ -17,6 +17,7 @@ final class DictationCoordinator: ObservableObject {
     private let provider: TranscriptionProvider
     private let injector: TextInjector
     private let minSessionMs: Int
+    private var warmedModelDir: URL?
 
     init(provider: TranscriptionProvider, injector: TextInjector, minSessionMs: Int = 200) {
         self.provider = provider
@@ -24,9 +25,12 @@ final class DictationCoordinator: ObservableObject {
         self.minSessionMs = minSessionMs
     }
 
-    /// Поднять provider и загрузить модель.
+    /// Поднять provider и загрузить модель. Идемпотентно: повторный вызов с тем же
+    /// каталогом — no-op (модель не грузится в sidecar дважды).
     func warmup(modelDir: URL) async throws {
+        if warmedModelDir == modelDir { return }
         try await provider.start(modelDir: modelDir)
+        warmedModelDir = modelDir
     }
 
     /// Немедленно возвращает координатор в .idle и отменяет текущий provider.

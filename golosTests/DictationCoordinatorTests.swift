@@ -5,6 +5,7 @@ import Foundation
 // Моки для зависимостей.
 final class MockTranscriptionProvider: TranscriptionProvider, @unchecked Sendable {
     var startCalledWith: URL?
+    var startCallCount = 0
     var beginCalled = false
     var feedBytes: Int = 0
     var finalizeReturn: Transcript = .init(text: "тест", durationMs: 100)
@@ -13,7 +14,7 @@ final class MockTranscriptionProvider: TranscriptionProvider, @unchecked Sendabl
     /// Порядок вызовов flush/finalize для проверки в тестах.
     var flushOrder: [String] = []
 
-    func start(modelDir: URL) async throws { startCalledWith = modelDir }
+    func start(modelDir: URL) async throws { startCalledWith = modelDir; startCallCount += 1 }
     func resetSampleCounter() { feedBytes = 0 }
     func beginSession() async throws { beginCalled = true }
     func feed(samples: Data) throws { feedBytes += samples.count }
@@ -227,6 +228,17 @@ struct DictationCoordinatorTests {
         let gotIdle = await Self.waitForStateIdle(c, timeout: 2.0)
         #expect(gotIdle, "state must reach .idle")
         #expect(c.state == .idle)
+    }
+
+    @Test @MainActor func warmupIsIdempotentForSameDir() async throws {
+        let prov = MockTranscriptionProvider()
+        let coordinator = DictationCoordinator(provider: prov, injector: MockTextInjector())
+        let dir = URL(fileURLWithPath: "/tmp/model-x")
+
+        try await coordinator.warmup(modelDir: dir)
+        try await coordinator.warmup(modelDir: dir)
+
+        #expect(prov.startCallCount == 1)
     }
 
     // MARK: - Task 7.2: feed gating и flush ordering
