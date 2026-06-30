@@ -11,7 +11,7 @@ SIDECAR=golos-asr/target/universal-apple-darwin/release/golos-asr
 
 if [[ ! -f "$SIDECAR" ]]; then
   echo "▶ Sidecar не собран — собираю Rust…"
-  PATH=/Users/alfa/.cargo/bin:$PATH bash golos-asr/scripts/build-universal.sh
+  PATH="$HOME/.cargo/bin:$PATH" bash golos-asr/scripts/build-universal.sh
 fi
 
 echo "▶ Сборка (подпись golos-dev)…"

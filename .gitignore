@@ -22,9 +22,8 @@ DerivedData/
 .build/
 Package.resolved
 
-# Rust (sidecar)
+# Rust (sidecar) — Cargo.lock коммитим: sidecar бинарный, нужны воспроизводимые сборки
 target/
-Cargo.lock
 
 # Models — большие, скачиваются на машине пользователя
 models/
