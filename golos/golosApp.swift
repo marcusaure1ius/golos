@@ -57,7 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             w.title = "Настройка Golos"
             w.styleMask = [.titled, .closable, .fullSizeContentView]
             w.identifier = NSUserInterfaceItemIdentifier("onboarding")
-            w.setContentSize(NSSize(width: 580, height: 580))
+            w.setContentSize(NSSize(width: 760, height: 520))
             w.center()
             w.isReleasedWhenClosed = false
             onboardingWindow = w

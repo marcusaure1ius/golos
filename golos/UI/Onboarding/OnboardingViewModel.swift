@@ -20,6 +20,6 @@ final class OnboardingViewModel: ObservableObject {
         }
     }
 
-    func next() { if currentStep < totalSteps { currentStep += 1 } }
-    func back() { if currentStep > 1  { currentStep -= 1 } }
+    func next() { if currentStep < totalSteps { withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { currentStep += 1 } } }
+    func back() { if currentStep > 1  { withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { currentStep -= 1 } } }
 }

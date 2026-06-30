@@ -42,6 +42,9 @@ struct OnboardingRoot: View {
             }
             .padding(.horizontal, 44).padding(.vertical, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .id(vm.currentStep)
+            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)))
 
             Divider()
             HStack(spacing: 8) {
@@ -74,7 +77,7 @@ struct OnboardingRoot: View {
             }
             .padding(.horizontal, 16).padding(.vertical, 14)
         }
-        .frame(width: 580, height: 580)
+        .frame(width: 760, height: 520)
         .background(.ultraThinMaterial)
     }
 

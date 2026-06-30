@@ -1,34 +1,56 @@
 import SwiftUI
 
-struct StepLayout<Content: View>: View {
+struct StepLayout<Content: View, Scene: View>: View {
     let iconColors: [Color]
     let icon: String
     let title: String
     let subtitle: String
+    let scene: () -> Scene
     let content: () -> Content
 
     init(iconColors: [Color], icon: String, title: String, subtitle: String,
+         @ViewBuilder scene: @escaping () -> Scene,
          @ViewBuilder content: @escaping () -> Content) {
         self.iconColors = iconColors
         self.icon = icon
         self.title = title
         self.subtitle = subtitle
+        self.scene = scene
         self.content = content
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(LinearGradient(colors: iconColors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 64, height: 64)
-                .overlay(Image(systemName: icon).font(.system(size: 32, weight: .semibold)).foregroundColor(.white))
-                .shadow(color: iconColors.first?.opacity(0.4) ?? .clear, radius: 18, y: 8)
-            Text(title).font(.system(size: 26, weight: .bold)).tracking(-0.5)
-            Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary).frame(maxWidth: 460, alignment: .leading)
-            content()
-            Spacer()
+        HStack(spacing: 0) {
+            // Левая панель: иконка, заголовок, копирайт, контент/действие
+            VStack(alignment: .leading, spacing: 14) {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(LinearGradient(colors: iconColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 46, height: 46)
+                    .overlay(Image(systemName: icon).font(.system(size: 22, weight: .semibold)).foregroundColor(.white))
+                    .shadow(color: iconColors.first?.opacity(0.4) ?? .clear, radius: 14, y: 6)
+                Text(title).font(.system(size: 23, weight: .bold)).tracking(-0.4)
+                Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 330, alignment: .leading)
+                content()
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, 4)
+
+            // Правая панель: «сцена»
+            ZStack { scene() }
+                .frame(width: 280)
+                .frame(maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension StepLayout where Scene == EmptyView {
+    init(iconColors: [Color], icon: String, title: String, subtitle: String,
+         @ViewBuilder content: @escaping () -> Content) {
+        self.init(iconColors: iconColors, icon: icon, title: title, subtitle: subtitle,
+                  scene: { EmptyView() }, content: content)
     }
 }
 
