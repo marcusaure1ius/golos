@@ -1,4 +1,4 @@
-# golos
+# Golos
 
 Native macOS voice dictation, Wispr Flow–style, with **fully local** speech
 recognition via [GigaAM-v3](https://github.com/salute-developers/GigaAM) (ONNX).
@@ -6,6 +6,14 @@ Press a hotkey, speak, and the transcribed text is pasted into the active app.
 Audio never leaves your machine.
 
 > UI and in-app strings are in Russian; the recognizer targets Russian speech.
+
+## Demo
+
+<!-- TODO: drop a demo GIF/screenshot here, e.g.:
+![Golos demo](assets/demo.gif)
+-->
+
+_Screenshot/demo coming soon._
 
 ## How it works
 
