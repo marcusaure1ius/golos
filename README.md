@@ -14,6 +14,10 @@ transcript is pasted into the active app.
 
 ![Golos recording pill](assets/pill.png)
 
+Every dictation is saved to a searchable history:
+
+![Golos history](assets/history.png)
+
 The settings window (Codex-style UI):
 
 ![Golos settings](assets/settings.png)
