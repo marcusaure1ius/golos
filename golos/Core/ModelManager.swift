@@ -92,61 +92,27 @@ class ModelManager: ObservableObject {
             req.setValue(v, forHTTPHeaderField: k)
         }
 
-        let (asyncBytes, response) = try await URLSession.shared.bytes(for: req)
-        guard let http = response as? HTTPURLResponse else {
-            throw NSError(domain: "ModelManager", code: -1)
-        }
-        guard http.statusCode == 200 || http.statusCode == 206 else {
-            throw NSError(domain: "ModelManager", code: http.statusCode,
-                          userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode)"])
-        }
-
-        let appending = (http.statusCode == 206)
-        let contentLength = http.expectedContentLength  // -1 если неизвестно
-        if !appending, contentLength > 0 {
-            // Обновим total если был unknown.
-            Task { @MainActor [weak self] in
-                guard let self, let p = self.progress else { return }
-                let baseTotal = (p.bytesTotal == 0) ? contentLength : p.bytesTotal
-                self.progress = .init(bytesDownloaded: p.bytesDownloaded, bytesTotal: baseTotal)
-            }
-        }
-        if !appending {
-            FileManager.default.createFile(atPath: dest.path, contents: nil)
-        } else if !FileManager.default.fileExists(atPath: dest.path) {
-            FileManager.default.createFile(atPath: dest.path, contents: nil)
-        }
-        let handle = try FileHandle(forWritingTo: dest)
-        if appending { try handle.seekToEnd() }
-        defer { try? handle.close() }
-
-        var hasher = SHA256()
-        var buffer = Data(capacity: 8 * 1024)
-        for try await byte in asyncBytes {
-            buffer.append(byte)
-            if buffer.count >= 64 * 1024 {
-                try handle.write(contentsOf: buffer)
-                hasher.update(data: buffer)
-                onChunk(buffer.count)
-                buffer.removeAll(keepingCapacity: true)
-            }
-        }
-        if !buffer.isEmpty {
-            try handle.write(contentsOf: buffer)
-            hasher.update(data: buffer)
-            onChunk(buffer.count)
-        }
-
-        if let expected = file.sha256 {
-            // SHA проверка корректна только при полной (не resume) загрузке.
-            if existing == 0 {
-                let got = Self.bytesToHex(Data(hasher.finalize()))
-                if got != expected {
-                    try? FileManager.default.removeItem(at: dest)
-                    throw NSError(domain: "ModelManager", code: -2,
-                                  userInfo: [NSLocalizedDescriptionKey: "sha256 mismatch: \(got) vs \(expected)"])
+        // Чанковая загрузка через URLSessionDataDelegate: данные приходят блоками
+        // (Data), а не по одному байту. Побайтовый `URLSession.AsyncBytes` упирался
+        // в CPU и давал ~1/10 скорости сети на больших файлах (модель ~886 МБ).
+        let delegate = StreamingDownloadDelegate(
+            dest: dest,
+            resumeFromExisting: existing,
+            expectedSha: file.sha256,
+            onChunk: onChunk,
+            onTotal: { [weak self] total in
+                // Обновим total только если он был неизвестен.
+                Task { @MainActor [weak self] in
+                    guard let self, let p = self.progress, p.bytesTotal == 0 else { return }
+                    self.progress = .init(bytesDownloaded: p.bytesDownloaded, bytesTotal: total)
                 }
             }
+        )
+        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            delegate.start(continuation: cont, session: session, request: req)
         }
     }
 
@@ -190,4 +156,103 @@ extension ModelDescriptor {
             ),
         ]
     )
+}
+
+// MARK: Чанковая потоковая загрузка
+
+/// Делегат потоковой загрузки: пишет приходящие блоки `Data` в файл, считает
+/// sha256, репортит прогресс. Заменяет побайтовый `URLSession.AsyncBytes`, который
+/// упирался в CPU. Колбэки URLSession приходят на своей serial-очереди, так что
+/// мутабельное состояние не гоняется конкурентно.
+private final class StreamingDownloadDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    private let dest: URL
+    private let resumeFromExisting: Int64
+    private let expectedSha: String?
+    private let onChunk: (Int) -> Void
+    private let onTotal: (Int64) -> Void
+
+    private var handle: FileHandle?
+    private var hasher = SHA256()
+    private var appending = false
+    private var finished = false
+    private var continuation: CheckedContinuation<Void, Error>?
+
+    init(dest: URL, resumeFromExisting: Int64, expectedSha: String?,
+         onChunk: @escaping (Int) -> Void, onTotal: @escaping (Int64) -> Void) {
+        self.dest = dest
+        self.resumeFromExisting = resumeFromExisting
+        self.expectedSha = expectedSha
+        self.onChunk = onChunk
+        self.onTotal = onTotal
+    }
+
+    func start(continuation: CheckedContinuation<Void, Error>, session: URLSession, request: URLRequest) {
+        self.continuation = continuation
+        session.dataTask(with: request).resume()
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
+                    didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        guard let http = response as? HTTPURLResponse else {
+            finish(throwing: NSError(domain: "ModelManager", code: -1)); completionHandler(.cancel); return
+        }
+        guard http.statusCode == 200 || http.statusCode == 206 else {
+            finish(throwing: NSError(domain: "ModelManager", code: http.statusCode,
+                                     userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode)"]))
+            completionHandler(.cancel); return
+        }
+        appending = (http.statusCode == 206)
+        let contentLength = http.expectedContentLength  // -1 если неизвестно
+        if !appending, contentLength > 0 { onTotal(contentLength) }
+
+        if !appending || !FileManager.default.fileExists(atPath: dest.path) {
+            FileManager.default.createFile(atPath: dest.path, contents: nil)
+        }
+        do {
+            let h = try FileHandle(forWritingTo: dest)
+            if appending { try h.seekToEnd() }
+            handle = h
+        } catch {
+            finish(throwing: error); completionHandler(.cancel); return
+        }
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        guard let handle else { return }
+        do {
+            try handle.write(contentsOf: data)
+            hasher.update(data: data)
+            onChunk(data.count)
+        } catch {
+            finish(throwing: error)
+            dataTask.cancel()
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        try? handle?.close()
+        handle = nil
+        if finished { return }
+        if let error { finish(throwing: error); return }
+        // SHA проверка корректна только при полной (не resume) загрузке.
+        if let expectedSha, resumeFromExisting == 0 {
+            let got = ModelManager.bytesToHex(Data(hasher.finalize()))
+            if got != expectedSha {
+                try? FileManager.default.removeItem(at: dest)
+                finish(throwing: NSError(domain: "ModelManager", code: -2,
+                                         userInfo: [NSLocalizedDescriptionKey: "sha256 mismatch: \(got) vs \(expectedSha)"]))
+                return
+            }
+        }
+        finish(throwing: nil)
+    }
+
+    private func finish(throwing error: Error?) {
+        guard !finished else { return }
+        finished = true
+        if let error { continuation?.resume(throwing: error) } else { continuation?.resume() }
+        continuation = nil
+    }
 }
