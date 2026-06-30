@@ -26,8 +26,8 @@ final class SystemAppearance: ObservableObject {
     }
 }
 
-/// Оболочка главного окна в стиле Codex: серый сайдбар + белый контент
-/// со скруглёнными левыми углами (radius 18) и лёгкой тенью слева.
+/// Оболочка главного окна в стиле Codex: полупрозрачный вибрантный сайдбар +
+/// белый контент с прямыми углами и лёгкой тенью слева.
 ///
 /// Тема: эффективная схема вычисляется явно (`.light`/`.dark`) — для «Авто»
 /// берётся системная тема из `SystemAppearance`. В `.preferredColorScheme`
@@ -62,11 +62,15 @@ struct MainWindowView: View {
             HStack(spacing: 0) {
                 SidebarView(selection: $selection)
 
-                // Контентная область со скруглёнными левыми углами
+                // Контентная область с прямыми углами
                 contentPane(p: p)
             }
         }
-        .background(p.sidebar)
+        // Без сплошного фона: за сайдбаром — вибрантность, за контентом — его
+        // непрозрачный фон. Базовый VisualEffectView подстилает зону баннера,
+        // чтобы при прозрачном окне за ней не просвечивал рабочий стол.
+        .background(VisualEffectView(material: .sidebar))
+        .background(WindowConfigurator())
         .environment(\.palette, p)
         .preferredColorScheme(effectiveScheme)
         .frame(minWidth: 1000, minHeight: 680)
@@ -76,8 +80,8 @@ struct MainWindowView: View {
     @ViewBuilder
     private func contentPane(p: Palette) -> some View {
         let shape = UnevenRoundedRectangle(
-            topLeadingRadius: 18,
-            bottomLeadingRadius: 18,
+            topLeadingRadius: 0,
+            bottomLeadingRadius: 0,
             bottomTrailingRadius: 0,
             topTrailingRadius: 0
         )
