@@ -28,8 +28,10 @@ struct MicrophoneStep: View {
                         .font(.system(size: 13, weight: .medium)).foregroundStyle(.green)
                 } else {
                     ctaView
-                    Text("macOS покажет системный диалог")
-                        .font(.system(size: 11.5)).foregroundStyle(.tertiary)
+                    if status == .notDetermined {
+                        Text("macOS покажет системный диалог")
+                            .font(.system(size: 11.5)).foregroundStyle(.tertiary)
+                    }
                 }
             }
             .padding(.top, 6)
@@ -43,7 +45,7 @@ struct MicrophoneStep: View {
         .onDisappear { stopMonitoring() }
         .onReceive(timer) { _ in
             status = Permissions.microphoneStatus()
-            startMonitoringIfGranted()
+            if granted { startMonitoringIfGranted() } else { stopMonitoring() }
         }
         .onReceive(coordinator.audio.$level) { lvl in
             guard monitoring else { return }
@@ -63,7 +65,9 @@ struct MicrophoneStep: View {
                 let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!
                 NSWorkspace.shared.open(url)
             }.buttonStyle(.borderedProminent)
-        default:
+        case .authorized:
+            EmptyView()
+        @unknown default:
             EmptyView()
         }
     }
