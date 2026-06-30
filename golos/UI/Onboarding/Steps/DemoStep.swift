@@ -52,6 +52,11 @@ struct DemoStep: View {
                 }
             }
         }
+        .onAppear {
+            // Страховка: если Input Monitoring выдали в онбординге, tap мог не
+            // подняться — поднимем здесь, чтобы правый ⌥ точно работал в демо.
+            coordinator.startHotkeysIfNeeded()
+        }
         .onChange(of: recording) { isRecording in
             if isRecording { levels = []; armed = true }
         }

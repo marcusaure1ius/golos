@@ -2,6 +2,7 @@ import SwiftUI
 
 struct InputMonitoringStep: View {
     @Environment(\.palette) var p
+    @EnvironmentObject private var coordinator: AppCoordinator
     @State private var granted: Bool = Permissions.inputMonitoringGranted()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -34,9 +35,13 @@ struct InputMonitoringStep: View {
             // Регистрируем намерение получить Input Monitoring — это добавляет golos
             // в список System Settings, даже если ещё не выдан.
             _ = Permissions.requestInputMonitoring()
+            if granted { coordinator.startHotkeysIfNeeded() }
         }
         .onReceive(timer) { _ in
             granted = Permissions.inputMonitoringGranted()
+            // Доступ мог быть выдан только что — поднять хоткей-tap (на старте его
+            // ещё не было, и сам он не пересоздаётся).
+            if granted { coordinator.startHotkeysIfNeeded() }
         }
     }
 }

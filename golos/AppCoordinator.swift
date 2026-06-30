@@ -16,6 +16,7 @@ final class AppCoordinator: ObservableObject {
     @Published private(set) var permissionIssue: String?
 
     private var didStart = false
+    private var hotkeysRunning = false
 
     init() {
         let prov = LocalGigaAMProvider()
@@ -44,21 +45,16 @@ final class AppCoordinator: ObservableObject {
             voiceProcessingEnabled: AppSettings.shared.noiseReduction
         )
 
-        // Hotkeys (требуют Input Monitoring; если permission нет — start() выкинет ошибку, мы её залогируем)
-        let hm = HotkeyManager(
+        // Hotkeys (требуют Input Monitoring). Создаём всегда; tap поднимаем когда
+        // доступ выдан — на свежей установке он выдаётся в онбординге уже ПОСЛЕ старта.
+        self.hotkeys = HotkeyManager(
             holdThresholdMs: AppSettings.shared.holdMs,
             doubleTapWindowMs: AppSettings.shared.doubleTapMs,
             boundKeycode: Int64(AppSettings.shared.hotkeyKeycode)
         ) { [weak self] e in
             self?.dictation.handle(e)
         }
-        do {
-            try hm.start()
-            self.hotkeys = hm
-        } catch {
-            Log.coordinator.error("hotkeys start failed: \(error.localizedDescription, privacy: .public)")
-            permissionIssue = "Хоткеи отключены: \(error.localizedDescription). Открыть System Settings → Input Monitoring."
-        }
+        startHotkeysIfNeeded()
 
         // Audio samples → coordinator
         let audio = self.audio
@@ -91,6 +87,26 @@ final class AppCoordinator: ObservableObject {
         // Onboarding на первом запуске
         if AppSettings.shared.firstRun {
             openOnboarding()
+        }
+    }
+
+    /// Поднимает хоткей-tap, если Input Monitoring выдан и tap ещё не запущен.
+    /// Зовётся при старте И когда доступ выдаётся позже в онбординге — иначе на
+    /// свежей установке правый ⌥ остаётся мёртвым (tap не пересоздавался).
+    func startHotkeysIfNeeded() {
+        guard !hotkeysRunning, let hm = hotkeys else { return }
+        guard Permissions.inputMonitoringGranted() else {
+            Log.coordinator.info("hotkeys: awaiting Input Monitoring")
+            return
+        }
+        do {
+            try hm.start()
+            hotkeysRunning = true
+            permissionIssue = nil
+            Log.coordinator.info("hotkeys started")
+        } catch {
+            Log.coordinator.error("hotkeys start failed: \(error.localizedDescription, privacy: .public)")
+            permissionIssue = "Хоткеи отключены: \(error.localizedDescription). Открыть System Settings → Input Monitoring."
         }
     }
 

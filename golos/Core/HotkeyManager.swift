@@ -105,8 +105,10 @@ final class HotkeyManager {
         }
     }
 
-    /// Запуск перехвата. Требует Input Monitoring permission.
+    /// Запуск перехвата. Требует Input Monitoring permission. Идемпотентно:
+    /// если tap уже создан — no-op (можно безопасно ретраить после выдачи доступа).
     func start() throws {
+        guard eventTap == nil else { return }
         Log.hotkeys.info("perms — mic: \(String(describing: Permissions.microphoneStatus().rawValue), privacy: .public), ax: \(Permissions.accessibilityGranted(), privacy: .public), input: \(Permissions.inputMonitoringGranted(), privacy: .public)")
         let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
             | (1 << CGEventType.tapDisabledByTimeout.rawValue)
