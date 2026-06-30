@@ -29,7 +29,7 @@ struct DemoStep: View {
                     WaveformView(levels: levels, live: true, maxHeight: 88)
                     Text("● Запись").font(.system(size: 12, weight: .semibold)).foregroundStyle(.red)
                 }
-            } else if !text.isEmpty {
+            } else if !text.isEmpty && !failed {
                 VStack(spacing: 10) {
                     Image(systemName: "checkmark.circle.fill").font(.system(size: 54)).foregroundStyle(.green)
                     Text("Текст вставлен").font(.system(size: 12, weight: .semibold)).foregroundStyle(.green)
@@ -48,6 +48,9 @@ struct DemoStep: View {
                         .buttonStyle(.bordered)
                 }
             }
+        }
+        .onChange(of: recording) { isRecording in
+            if isRecording { levels = [] }
         }
         .onReceive(coordinator.audio.$level) { lvl in
             guard recording else { return }
