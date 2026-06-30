@@ -1,22 +1,21 @@
 import SwiftUI
 
 struct AccessibilityStep: View {
+    @Environment(\.palette) var p
     @State private var granted: Bool = Permissions.accessibilityGranted()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         StepLayout(
-            iconColors: granted ? [.green, .mint] : [.blue, .indigo],
-            icon: "person.fill",
+            icon: "accessibility",
             title: "Разреши вставлять текст",
             subtitle: "Чтобы я мог вставлять текст в приложения, в которые ты диктуешь."
         ) {
-            PermissionScene(granted: granted, iconColors: granted ? [.green, .mint] : [.blue, .indigo], icon: "accessibility")
-        } content: {
             VStack(alignment: .leading, spacing: 12) {
                 if granted {
-                    Label("Доступ открыт", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 13, weight: .medium)).foregroundStyle(.green)
+                    Label("Доступ открыт", systemImage: "checkmark.circle")
+                        .font(.system(size: 13.5))
+                        .foregroundStyle(p.ink)
                 } else {
                     NumberedSteps(items: [
                         "System Settings → Privacy & Security → Accessibility",
@@ -24,7 +23,7 @@ struct AccessibilityStep: View {
                         "Вернись сюда — статус обновится автоматически"
                     ])
                     Button("Открыть System Settings") { Permissions.openAccessibilitySettings() }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PrimaryButton())
                 }
             }
             .padding(.top, 6)
@@ -41,17 +40,22 @@ struct AccessibilityStep: View {
 }
 
 struct NumberedSteps: View {
+    @Environment(\.palette) var p
     let items: [String]
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(items.enumerated()), id: \.offset) { idx, text in
                 HStack(alignment: .top, spacing: 10) {
                     ZStack {
-                        Circle().fill(Color.accentColor.opacity(0.12))
-                        Text("\(idx + 1)").font(.system(size: 11, weight: .semibold)).foregroundColor(.accentColor)
+                        Circle().fill(p.selection)
+                        Text("\(idx + 1)")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(p.ink)
                     }
                     .frame(width: 20, height: 20)
-                    Text(text).font(.system(size: 13))
+                    Text(text)
+                        .font(.system(size: 13))
+                        .foregroundStyle(p.ink)
                 }
             }
         }

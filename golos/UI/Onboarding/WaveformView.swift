@@ -26,11 +26,8 @@ struct WaveformView: View {
     /// столбики почти не видны. Клампится в [0,1] внутри.
     var gain: Float = 6
 
-    private let idleColor = Color(hex: 0xc7c7cc)
-    private var liveGradient: LinearGradient {
-        LinearGradient(colors: [Color(hex: 0xff8a7d), Color(hex: 0xff3b30)],
-                       startPoint: .top, endPoint: .bottom)
-    }
+    private let idleColor = Color.secondary.opacity(0.35)
+    private let liveColor = Color.primary
 
     var body: some View {
         let amplified = levels.map { Swift.min(1, $0 * gain) }
@@ -38,7 +35,7 @@ struct WaveformView: View {
         HStack(spacing: 5) {
             ForEach(Array(heights.enumerated()), id: \.offset) { _, h in
                 Capsule()
-                    .fill(live ? AnyShapeStyle(liveGradient) : AnyShapeStyle(idleColor))
+                    .fill(live ? liveColor : idleColor)
                     .frame(width: 6, height: max(3, h))
             }
         }

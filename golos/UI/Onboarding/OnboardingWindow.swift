@@ -3,7 +3,16 @@ import SwiftUI
 struct OnboardingRoot: View {
     @StateObject var vm = OnboardingViewModel()
     @ObservedObject var settings: AppSettings = .shared
+    @StateObject private var system = SystemAppearance()
     @State private var showSkipConfirm = false
+
+    private var effectiveScheme: ColorScheme {
+        switch settings.themeMode {
+        case .auto:  return system.scheme
+        case .light: return .light
+        case .dark:  return .dark
+        }
+    }
 
     private var skipMessage: String {
         switch vm.currentStep {
@@ -16,14 +25,18 @@ struct OnboardingRoot: View {
     }
 
     var body: some View {
+        let p = Palette.of(effectiveScheme)
         VStack(spacing: 0) {
             VStack(spacing: 8) {
                 PillProgress(total: vm.totalSteps, current: vm.currentStep) { vm.currentStep = $0 }
                 HStack {
-                    Text(vm.stepTitle).font(.system(size: 12, weight: .semibold))
+                    Text(vm.stepTitle)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(p.ink)
                     Spacer()
                     Text("\(vm.currentStep) из \(vm.totalSteps)")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .font(.system(size: 11))
+                        .foregroundStyle(p.muted)
                 }
             }
             .padding(.horizontal, 28).padding(.top, 20).padding(.bottom, 12)
@@ -40,8 +53,9 @@ struct OnboardingRoot: View {
                 default: EmptyView()
                 }
             }
+            .frame(maxWidth: 480, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, 44).padding(.vertical, 12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .id(vm.currentStep)
             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
                                     removal: .move(edge: .leading).combined(with: .opacity)))
@@ -49,11 +63,12 @@ struct OnboardingRoot: View {
             Divider()
             HStack(spacing: 8) {
                 Button("‹ Назад") { vm.back() }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(GhostButton())
                     .disabled(vm.currentStep == 1)
+                    .opacity(vm.currentStep == 1 ? 0.4 : 1)
                 Spacer()
                 Button("Пропустить") { showSkipConfirm = true }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(GhostButton())
                     .alert("Пропустить настройку?", isPresented: $showSkipConfirm) {
                         Button("Продолжить настройку", role: .cancel) {}
                         Button("Закрыть и настроить позже", role: .destructive) {
@@ -72,13 +87,15 @@ struct OnboardingRoot: View {
                         vm.next()
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButton())
                 .disabled(vm.currentStep == 5 && !vm.modelReady && !vm.didExplicitlySkipModel)
             }
             .padding(.horizontal, 16).padding(.vertical, 14)
         }
         .frame(width: 760, height: 520)
-        .background(.ultraThinMaterial)
+        .background(p.bg)
+        .environment(\.palette, p)
+        .preferredColorScheme(effectiveScheme)
     }
 
     private func close() {

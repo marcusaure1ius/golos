@@ -1,121 +1,49 @@
 import SwiftUI
 
-struct StepLayout<Content: View, Scene: View>: View {
-    let iconColors: [Color]
+/// Одноколоночный контейнер шага онбординга в строгом стиле приложения:
+/// нейтральный тайл-иконка → заголовок → подзаголовок → контент. Цвета из палитры.
+struct StepLayout<Content: View>: View {
+    @Environment(\.palette) var p
     let icon: String
     let title: String
     let subtitle: String
-    let scene: () -> Scene
     let content: () -> Content
 
-    init(iconColors: [Color], icon: String, title: String, subtitle: String,
-         @ViewBuilder scene: @escaping () -> Scene,
+    init(icon: String, title: String, subtitle: String,
          @ViewBuilder content: @escaping () -> Content) {
-        self.iconColors = iconColors
         self.icon = icon
         self.title = title
         self.subtitle = subtitle
-        self.scene = scene
         self.content = content
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Левая панель: иконка, заголовок, копирайт, контент/действие
-            VStack(alignment: .leading, spacing: 14) {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(LinearGradient(colors: iconColors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 46, height: 46)
-                    .overlay(Image(systemName: icon).font(.system(size: 22, weight: .semibold)).foregroundColor(.white))
-                    .shadow(color: iconColors.first?.opacity(0.4) ?? .clear, radius: 14, y: 6)
-                Text(title).font(.system(size: 23, weight: .bold)).tracking(-0.4)
-                Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 330, alignment: .leading)
-                content()
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.trailing, 4)
-
-            // Правая панель: «сцена»
-            ZStack { scene() }
-                .frame(width: 280)
-                .frame(maxHeight: .infinity)
+        VStack(alignment: .leading, spacing: 14) {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(p.selection)
+                .frame(width: 46, height: 46)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(p.border, lineWidth: 1)
+                )
+                .overlay(
+                    Image(systemName: icon)
+                        .font(.system(size: 22, weight: .regular))
+                        .foregroundStyle(p.ink)
+                )
+            Text(title)
+                .font(.system(size: 26, weight: .bold))
+                .tracking(-0.4)
+                .foregroundStyle(p.ink)
+            Text(subtitle)
+                .font(.system(size: 14))
+                .foregroundStyle(p.muted)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 440, alignment: .leading)
+            content()
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-extension StepLayout where Scene == EmptyView {
-    init(iconColors: [Color], icon: String, title: String, subtitle: String,
-         @ViewBuilder content: @escaping () -> Content) {
-        self.init(iconColors: iconColors, icon: icon, title: title, subtitle: subtitle,
-                  scene: { EmptyView() }, content: content)
-    }
-}
-
-/// Маленький status pill — серая/зелёная капсула со статусом permission.
-struct PermStatusPill: View {
-    let granted: Bool
-    let pendingText: String
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Circle().frame(width: 7, height: 7)
-            Text(granted ? "Разрешено" : pendingText)
-        }
-        .font(.system(size: 11, weight: .medium))
-        .padding(.horizontal, 9).padding(.vertical, 3)
-        .background(color.opacity(0.15), in: Capsule())
-        .foregroundColor(color)
-    }
-
-    private var color: Color { granted ? .green : .orange }
-}
-
-/// Сцена правой панели для permission-шагов без аудио: тайл-иконка в кольцах.
-struct PermissionScene: View {
-    let granted: Bool
-    let iconColors: [Color]
-    let icon: String
-    var body: some View {
-        ZStack {
-            ForEach(0..<3) { i in
-                Circle()
-                    .stroke((granted ? Color.green : iconColors.first ?? .blue).opacity(0.28 - Double(i) * 0.08), lineWidth: 1.5)
-                    .frame(width: 90 + CGFloat(i) * 54, height: 90 + CGFloat(i) * 54)
-            }
-            RoundedRectangle(cornerRadius: 22)
-                .fill(LinearGradient(colors: granted ? [.green, .mint] : iconColors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 78, height: 78)
-                .overlay(Image(systemName: granted ? "checkmark" : icon).font(.system(size: 30, weight: .semibold)).foregroundColor(.white))
-                .shadow(color: (granted ? Color.green : iconColors.first ?? .blue).opacity(0.5), radius: 18, y: 8)
-        }
-    }
-}
-
-/// Карточка с цветным иконом + label/meta + slot справа (status / progress).
-struct PermCard<Trailing: View>: View {
-    let iconColors: [Color]
-    let iconName: String
-    let title: String
-    let subtitle: String
-    @ViewBuilder var trailing: () -> Trailing
-
-    var body: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 7)
-                .fill(LinearGradient(colors: iconColors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 28, height: 28)
-                .overlay(Image(systemName: iconName).foregroundColor(.white).font(.system(size: 14)))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 13, weight: .medium))
-                Text(subtitle).font(.system(size: 11)).foregroundStyle(.secondary)
-            }
-            Spacer()
-            trailing()
-        }
-        .padding(14)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
     }
 }

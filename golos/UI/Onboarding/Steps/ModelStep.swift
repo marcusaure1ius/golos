@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ModelStep: View {
+    @Environment(\.palette) var p
     @ObservedObject var vm: OnboardingViewModel
     @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var manager = ModelManager()
@@ -16,26 +17,11 @@ struct ModelStep: View {
 
     var body: some View {
         StepLayout(
-            iconColors: [.orange, .yellow],
-            icon: "shippingbox.fill",
+            icon: "shippingbox",
             title: "Модель распознавания",
             subtitle: "Распознавание работает локально. Модель скачается один раз."
         ) {
-            ZStack {
-                Circle().stroke(Color.secondary.opacity(0.15), lineWidth: 8).frame(width: 120, height: 120)
-                if let p = manager.progress, isDownloading {
-                    Circle().trim(from: 0, to: p.fraction)
-                        .stroke(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom),
-                                style: .init(lineWidth: 8, lineCap: .round))
-                        .rotationEffect(.degrees(-90)).frame(width: 120, height: 120)
-                    Text("\(Int(p.fraction * 100))%").font(.system(size: 22, weight: .bold))
-                } else {
-                    Image(systemName: manager.isInstalled(model) ? "checkmark.circle.fill" : "shippingbox.fill")
-                        .font(.system(size: 44)).foregroundStyle(manager.isInstalled(model) ? .green : .orange)
-                }
-            }
-        } content: {
-            VStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 8) {
                 ModelRow(
                     name: model.displayName,
                     meta: "Локальное распознавание русской речи",
@@ -45,25 +31,29 @@ struct ModelStep: View {
                     onDownload: { Task { await download() } }
                 )
 
-                if let p = manager.progress, isDownloading {
-                    VStack(spacing: 4) {
-                        ProgressView(value: p.fraction)
+                if let prog = manager.progress, isDownloading {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ProgressView(value: prog.fraction)
+                            .tint(p.ink)
                         HStack {
                             Text("Загружаю…")
                             Spacer()
-                            Text("\(Int(p.fraction * 100))%")
+                            Text("\(Int(prog.fraction * 100))%")
                         }
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .font(.system(size: 11))
+                        .foregroundStyle(p.muted)
                     }
                     .padding(.top, 8)
                 }
 
                 if let err = manager.error {
                     HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
-                        Text(err).font(.system(size: 11)).foregroundStyle(.secondary)
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(p.muted)
+                        Text(err).font(.system(size: 11)).foregroundStyle(p.muted)
                         Spacer()
                         Button("Повторить") { Task { await download() } }
+                            .buttonStyle(GhostButton())
                     }
                     .padding(.top, 8)
                 }
@@ -85,6 +75,7 @@ struct ModelStep: View {
 }
 
 struct ModelRow: View {
+    @Environment(\.palette) var p
     let name: String
     let meta: String
     let size: String
@@ -95,22 +86,31 @@ struct ModelRow: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.system(size: 13, weight: .semibold))
-                Text(meta).font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(name).font(.system(size: 13, weight: .semibold)).foregroundStyle(p.ink)
+                Text(meta).font(.system(size: 11)).foregroundStyle(p.muted)
             }
             Spacer()
-            Text(size).font(.system(size: 11)).foregroundStyle(.secondary)
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 5))
+            if !size.isEmpty {
+                Text(size)
+                    .font(.system(size: 11))
+                    .foregroundStyle(p.muted)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(p.selection, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            }
 
             if !isInstalled {
                 Button(isDownloading ? "Скачиваю…" : "Скачать") { onDownload() }
+                    .buttonStyle(PrimaryButton())
                     .disabled(isDownloading)
             } else {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Image(systemName: "checkmark.circle").foregroundStyle(p.ink)
             }
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .background(p.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(p.border, lineWidth: 1)
+        )
     }
 }

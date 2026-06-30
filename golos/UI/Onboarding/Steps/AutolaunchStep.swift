@@ -6,19 +6,14 @@ struct AutolaunchStep: View {
 
     var body: some View {
         StepLayout(
-            iconColors: [.green, .mint],
             icon: "power",
             title: "Запускать вместе с Mac?",
             subtitle: "Чтобы Golos был готов сразу — не запускать его вручную каждый раз."
         ) {
-            PermissionScene(granted: vm.autolaunchChoice == true, iconColors: [.green, .mint], icon: "power")
-        } content: {
             VStack(spacing: 8) {
-                BigChoiceButton(
-                    iconName: "checkmark", iconColors: [.green, .mint],
+                ChoiceRow(
                     title: "Да, запускать автоматически",
                     meta: "Иконка появится в menu bar после входа",
-                    isPrimary: true,
                     selected: vm.autolaunchChoice == true
                 ) {
                     if #available(macOS 13.0, *) {
@@ -27,11 +22,9 @@ struct AutolaunchStep: View {
                     vm.autolaunchChoice = true
                     onChoice(true)
                 }
-                BigChoiceButton(
-                    iconName: "minus", iconColors: [.gray, .secondary],
+                ChoiceRow(
                     title: "Спасибо, я сам",
                     meta: "Можно изменить позже в Настройках",
-                    isPrimary: false,
                     selected: vm.autolaunchChoice == false
                 ) {
                     if #available(macOS 13.0, *) {
@@ -45,40 +38,35 @@ struct AutolaunchStep: View {
     }
 }
 
-struct BigChoiceButton: View {
-    let iconName: String
-    let iconColors: [Color]
+struct ChoiceRow: View {
+    @Environment(\.palette) var p
     let title: String
     let meta: String
-    let isPrimary: Bool
-    var selected: Bool = false
+    let selected: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 14) {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(LinearGradient(colors: iconColors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 32, height: 32)
-                    .overlay(Image(systemName: iconName).font(.system(size: 14)).foregroundColor(.white))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.system(size: 13, weight: .semibold))
-                    Text(meta).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(p.ink)
+                    Text(meta).font(.system(size: 11)).foregroundStyle(p.muted)
                 }
                 Spacer()
                 if selected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green).font(.system(size: 16))
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(p.ink)
                 }
             }
             .padding(14)
-            .background(selected ? Color.accentColor.opacity(0.14)
-                                 : (isPrimary ? Color.accentColor.opacity(0.1) : Color.secondary.opacity(0.08)),
-                        in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12)
-                .stroke(selected ? Color.accentColor.opacity(0.6)
-                                 : (isPrimary ? Color.accentColor.opacity(0.3) : .clear),
-                        lineWidth: selected ? 1.5 : 1))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selected ? p.selection : p.card,
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(p.border, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }

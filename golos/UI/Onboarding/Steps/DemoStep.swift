@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DemoStep: View {
+    @Environment(\.palette) var p
     @EnvironmentObject private var coordinator: AppCoordinator
     @ObservedObject var vm: OnboardingViewModel
     @State private var text: String = ""
@@ -15,38 +16,39 @@ struct DemoStep: View {
 
     var body: some View {
         StepLayout(
-            iconColors: failed ? [.orange, .yellow] : (text.isEmpty ? [.teal, .cyan] : [.green, .mint]),
-            icon: "mic.fill",
+            icon: "mic",
             title: failed ? "Почти!" : (text.isEmpty ? (recording ? "Слушаю…" : "Попробуй прямо сейчас")
-                                                       : "Получилось! 🎉"),
+                                                       : "Получилось!"),
             subtitle: failed
                 ? "Текст распознан, но вставить не удалось — проверь Универсальный доступ."
                 : (text.isEmpty ? "Зажми правый ⌥ Option, продиктуй любую фразу и отпусти. Текст появится здесь."
                                 : "Это и есть весь Golos. Закрой окно — и диктуй в любом приложении точно так же.")
         ) {
-            // scene
-            if recording {
-                VStack(spacing: 12) {
-                    WaveformView(levels: levels, live: true, maxHeight: 88)
-                    Text("● Запись").font(.system(size: 12, weight: .semibold)).foregroundStyle(.red)
+            VStack(alignment: .leading, spacing: 12) {
+                if recording {
+                    HStack(spacing: 12) {
+                        WaveformView(levels: levels, live: true, maxHeight: 40)
+                        Text("● Запись").font(.system(size: 12, weight: .semibold)).foregroundStyle(p.muted)
+                    }
+                } else if !text.isEmpty && !failed {
+                    Label("Текст вставлен", systemImage: "checkmark.circle")
+                        .font(.system(size: 13.5))
+                        .foregroundStyle(p.ink)
+                        .transition(.opacity)
+                } else {
+                    HStack(spacing: 12) {
+                        KeyCap()
+                        Text("Зажми правый ⌥ и говори")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(p.muted)
+                    }
                 }
-            } else if !text.isEmpty && !failed {
-                VStack(spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 54)).foregroundStyle(.green)
-                    Text("Текст вставлен").font(.system(size: 12, weight: .semibold)).foregroundStyle(.green)
-                }.transition(.scale.combined(with: .opacity))
-            } else {
-                VStack(spacing: 14) {
-                    KeyCap()
-                    Text("Зажми правый ⌥ и говори").font(.system(size: 11.5)).foregroundStyle(.secondary)
-                }
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: 10) {
+
                 DemoField(text: $text)
+
                 if failed {
                     Button("Назад к Универсальному доступу") { vm.currentStep = 3 }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(GhostButton())
                 }
             }
         }
@@ -80,6 +82,7 @@ struct DemoStep: View {
 
 /// Демо-поле ввода (фокус-таргет для реальной вставки).
 private struct DemoField: View {
+    @Environment(\.palette) var p
     @Binding var text: String
     @FocusState private var focused: Bool
     var body: some View {
@@ -88,7 +91,7 @@ private struct DemoField: View {
                 // Выровнено с местом, где TextEditor рисует текст/каретку
                 // (padding 8 + ~5 lineFragmentPadding по горизонтали).
                 Text("Здесь появится твой текст…")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(p.muted2)
                     .padding(.leading, 13).padding(.top, 8)
                     .allowsHitTesting(false)
             }
@@ -96,10 +99,14 @@ private struct DemoField: View {
                 .scrollContentBackground(.hidden)
                 .padding(8)
                 .focused($focused)
+                .foregroundStyle(p.ink)
         }
         .frame(minHeight: 110)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(.secondary.opacity(0.25), lineWidth: 1))
+        .background(p.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(p.fieldBorder, lineWidth: 1)
+        )
         // Сразу фокус на поле — чтобы вставка попадала именно сюда и каретка была видна.
         .onAppear { DispatchQueue.main.async { focused = true } }
     }
@@ -107,14 +114,17 @@ private struct DemoField: View {
 
 /// Клавиша ⌥ для подсказки.
 private struct KeyCap: View {
+    @Environment(\.palette) var p
     var body: some View {
         VStack(spacing: 3) {
-            Text("⌥").font(.system(size: 24, weight: .medium))
-            Text("OPTION").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary).tracking(0.5)
+            Text("⌥").font(.system(size: 22, weight: .medium)).foregroundStyle(p.ink)
+            Text("OPTION").font(.system(size: 9, weight: .semibold)).foregroundStyle(p.muted).tracking(0.5)
         }
-        .frame(width: 64, height: 64)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(.secondary.opacity(0.2), lineWidth: 1))
-        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+        .frame(width: 56, height: 56)
+        .background(p.selection, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(p.border, lineWidth: 1)
+        )
     }
 }

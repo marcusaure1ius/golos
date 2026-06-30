@@ -2,6 +2,7 @@ import SwiftUI
 import AVFoundation
 
 struct MicrophoneStep: View {
+    @Environment(\.palette) var p
     @EnvironmentObject private var coordinator: AppCoordinator
     @State private var status: AVAuthorizationStatus = Permissions.microphoneStatus()
     @State private var levels: [Float] = []
@@ -12,25 +13,26 @@ struct MicrophoneStep: View {
 
     var body: some View {
         StepLayout(
-            iconColors: granted ? [.green, .mint] : [.red, .orange],
-            icon: "mic.fill",
+            icon: "mic",
             title: "Дай услышать тебя",
             subtitle: granted
-                ? "Отлично — я тебя слышу. Скажи что-нибудь, и волна справа отзовётся."
+                ? "Отлично — я тебя слышу. Скажи что-нибудь, и волна отзовётся."
                 : "Golos слушает микрофон и расшифровывает речь прямо на твоём Mac — звук никуда не уходит."
         ) {
-            // scene
-            WaveformView(levels: granted ? levels : [], live: granted)
-        } content: {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 if granted {
-                    Label("Микрофон подключён", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 13, weight: .medium)).foregroundStyle(.green)
+                    Label("Микрофон подключён", systemImage: "checkmark.circle")
+                        .font(.system(size: 13.5))
+                        .foregroundStyle(p.ink)
+                    if monitoring {
+                        WaveformView(levels: levels, live: true, maxHeight: 56)
+                    }
                 } else {
                     ctaView
                     if status == .notDetermined {
                         Text("macOS покажет системный диалог")
-                            .font(.system(size: 11.5)).foregroundStyle(.tertiary)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(p.muted2)
                     }
                 }
             }
@@ -59,12 +61,12 @@ struct MicrophoneStep: View {
         case .notDetermined:
             Button("Разрешить микрофон") {
                 Permissions.requestMicrophone { _ in status = Permissions.microphoneStatus() }
-            }.buttonStyle(.borderedProminent)
+            }.buttonStyle(PrimaryButton())
         case .denied, .restricted:
             Button("Открыть System Settings") {
                 let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!
                 NSWorkspace.shared.open(url)
-            }.buttonStyle(.borderedProminent)
+            }.buttonStyle(PrimaryButton())
         case .authorized:
             EmptyView()
         @unknown default:
