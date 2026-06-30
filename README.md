@@ -9,11 +9,14 @@ Audio never leaves your machine.
 
 ## Demo
 
-<!-- TODO: drop a demo GIF/screenshot here, e.g.:
-![Golos demo](assets/demo.gif)
--->
+Hold the hotkey and speak — a pill shows the live waveform. Release, and the
+transcript is pasted into the active app.
 
-_Screenshot/demo coming soon._
+![Golos recording pill](assets/pill.png)
+
+The settings window (Codex-style UI):
+
+![Golos settings](assets/settings.png)
 
 ## How it works
 
