@@ -10,6 +10,6 @@ import CoreGraphics
 
     @Test func clampsAndScales() {
         let h = Waveform.barHeights(levels: [-1, 0.5, 2.0], count: 3, maxHeight: 100, minHeight: 10)
-        #expect(h == [10, 55, 110])
+        #expect(h == [10, 55, 100])
     }
 }

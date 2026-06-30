@@ -3,17 +3,16 @@ import SwiftUI
 enum Waveform {
     /// Высоты столбиков из массива уровней. Берёт последние `count`
     /// значений, недостающие слева добивает нулями. Масштаб: 0 → minHeight,
-    /// 1.0 → maxHeight + minHeight. Отрицательные и сверхгромкие клампятся
-    /// в [minHeight, maxHeight + minHeight].
+    /// 1.0 → maxHeight. Отрицательные и сверхгромкие клампятся в [0, 1].
     static func barHeights(levels: [Float], count: Int, maxHeight: CGFloat, minHeight: CGFloat = 3) -> [CGFloat] {
         guard count > 0 else { return [] }
         var src = Array(levels.suffix(count))
         if src.count < count {
             src = Array(repeating: Float(0), count: count - src.count) + src
         }
-        let total = maxHeight + minHeight
         return src.map { v in
-            max(minHeight, min(total, CGFloat(v) * total))
+            let clamped = CGFloat(Swift.max(0, Swift.min(1, v)))
+            return minHeight + clamped * (maxHeight - minHeight)
         }
     }
 }
