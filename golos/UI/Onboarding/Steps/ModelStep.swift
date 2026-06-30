@@ -7,6 +7,12 @@ struct ModelStep: View {
 
     private let model = ModelDescriptor.gigaam
 
+    private var sizeText: String {
+        let total = model.files.compactMap(\.sizeBytes).reduce(0, +)
+        guard total > 0 else { return "" }
+        return "~\(Int((Double(total) / 1_000_000).rounded())) МБ"
+    }
+
     var body: some View {
         StepLayout(
             iconColors: [.orange, .yellow],
@@ -18,7 +24,7 @@ struct ModelStep: View {
                 ModelRow(
                     name: model.displayName,
                     meta: "Локальное распознавание русской речи",
-                    size: "~886 МБ",
+                    size: sizeText,
                     isInstalled: manager.isInstalled(model),
                     isDownloading: isDownloading,
                     onDownload: { Task { await download() } }
