@@ -13,7 +13,7 @@ struct ModelDownloadProgress: Equatable {
 
 /// Описание одной модели (несколько файлов в одном bundle).
 struct ModelDescriptor {
-    let id: String              // "e2e_rnnt" или "e2e_ctc"
+    let id: String              // "e2e_ctc"
     let displayName: String     // "Качество" / "Скорость"
     let files: [ModelFile]      // model.onnx, vocab.txt, ...
 }
@@ -165,46 +165,28 @@ class ModelManager: ObservableObject {
     }
 }
 
-// MARK: Конкретные модели GigaAM-v3
+// MARK: Модель GigaAM-v3 (единственная)
 
 extension ModelDescriptor {
-    /// e2e_rnnt — режим «Качество». URL'ы и точные sha256/sizes уточнить
-    /// в момент имплементации (см. plan.md, open question #1).
-    static let gigaamRnnt = ModelDescriptor(
-        id: "e2e_rnnt",
-        displayName: "Качество",
-        files: [
-            // TODO(plan.md OQ1): подтвердить URL'ы и заполнить sizeBytes из HEAD-запросов перед публикацией.
-            ModelFile(
-                url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-rnnt/model.onnx")!,
-                relativePath: "model.onnx",
-                sha256: nil,
-                sizeBytes: nil
-            ),
-            ModelFile(
-                url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-rnnt/vocab.txt")!,
-                relativePath: "vocab.txt",
-                sha256: nil,
-                sizeBytes: nil
-            ),
-        ]
-    )
-
-    static let gigaamCtc = ModelDescriptor(
+    /// Единственная модель — GigaAM-v3 e2e CTC (ONNX), со встроенной пунктуацией/нормализацией.
+    /// Источник: https://huggingface.co/istupakov/gigaam-v3-onnx (MIT, ONNX-конверсия GigaAM-v3
+    /// от SaluteDevices). sha256/размеры сверены с HF tree API. Файлы сохраняются как
+    /// model.onnx + vocab.txt — именно их ждёт GigaAMModel::load в sidecar при FP32.
+    static let gigaam = ModelDescriptor(
         id: "e2e_ctc",
-        displayName: "Скорость",
+        displayName: "GigaAM-v3",
         files: [
             ModelFile(
-                url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-ctc/model.onnx")!,
+                url: URL(string: "https://huggingface.co/istupakov/gigaam-v3-onnx/resolve/main/v3_e2e_ctc.onnx")!,
                 relativePath: "model.onnx",
-                sha256: nil,
-                sizeBytes: nil
+                sha256: "377701bd33568f4733feec2db5b2dc12544fd09a5a5dfa69ccf55d161f84027a",
+                sizeBytes: 885_950_079
             ),
             ModelFile(
-                url: URL(string: "https://huggingface.co/istupakov/onnx-asr/resolve/main/gigaam-v3-ctc/vocab.txt")!,
+                url: URL(string: "https://huggingface.co/istupakov/gigaam-v3-onnx/resolve/main/v3_e2e_ctc_vocab.txt")!,
                 relativePath: "vocab.txt",
-                sha256: nil,
-                sizeBytes: nil
+                sha256: "142de7570b3de5b3035ce111a89c228e80e6085273731d944093ddf24fa539cd",
+                sizeBytes: 2007
             ),
         ]
     )

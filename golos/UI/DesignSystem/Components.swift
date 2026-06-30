@@ -279,7 +279,7 @@ struct GRadioCard<Trailing: View>: View {
             .padding(.trailing, 15)
         }
         // .frame перед .background — позволяет растянуть фон на всю доступную высоту
-        // (используется в ModelsPane для карточек одинаковой высоты).
+        // (для карточек одинаковой высоты в радио-группах).
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(selected ? p.cardSel : p.card)
         .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))

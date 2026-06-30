@@ -107,7 +107,6 @@ struct MainWindowView: View {
         case .general:    GeneralPane()
         case .hotkeys:    HotkeysPane()
         case .microphone: MicrophonePane()
-        case .models:     ModelsPane()
         case .about:      AboutPane()
         }
     }

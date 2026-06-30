@@ -1,24 +1,30 @@
 import SwiftUI
 
 struct ModelStep: View {
-    @ObservedObject var settings: AppSettings = .shared
     @ObservedObject var vm: OnboardingViewModel
     @StateObject private var manager = ModelManager()
-    @State private var downloadingId: String?
-    @State private var lastAttempted: ModelDescriptor?
+    @State private var isDownloading = false
+
+    private let model = ModelDescriptor.gigaam
 
     var body: some View {
         StepLayout(
             iconColors: [.orange, .yellow],
             icon: "shippingbox.fill",
-            title: "Выбери модель",
-            subtitle: "Можно поменять позже в настройках. Модель скачается локально."
+            title: "Модель распознавания",
+            subtitle: "Распознавание работает локально. Модель скачается один раз."
         ) {
             VStack(spacing: 8) {
-                row(.gigaamRnnt, name: "Качество", meta: "Лучше распознаёт сложные фразы", size: "~340 МБ", isSelected: settings.modelMode == .quality)
-                row(.gigaamCtc, name: "Скорость", meta: "На 30–40% быстрее, чуть слабее по качеству", size: "~220 МБ", isSelected: settings.modelMode == .speed)
+                ModelRow(
+                    name: model.displayName,
+                    meta: "Локальное распознавание русской речи",
+                    size: "~886 МБ",
+                    isInstalled: manager.isInstalled(model),
+                    isDownloading: isDownloading,
+                    onDownload: { Task { await download() } }
+                )
 
-                if let p = manager.progress, downloadingId != nil {
+                if let p = manager.progress, isDownloading {
                     VStack(spacing: 4) {
                         ProgressView(value: p.fraction)
                         HStack {
@@ -36,84 +42,47 @@ struct ModelStep: View {
                         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
                         Text(err).font(.system(size: 11)).foregroundStyle(.secondary)
                         Spacer()
-                        Button("Повторить") { Task { await retry() } }
+                        Button("Повторить") { Task { await download() } }
                     }
                     .padding(.top, 8)
                 }
             }
         }
+        .onAppear { vm.modelReady = manager.isInstalled(model) }
     }
 
-    @ViewBuilder
-    private func row(_ desc: ModelDescriptor, name: String, meta: String, size: String, isSelected: Bool) -> some View {
-        ModelChoice(
-            name: name, meta: meta, size: size,
-            isSelected: isSelected,
-            isInstalled: manager.isInstalled(desc),
-            isDownloading: downloadingId == desc.id,
-            onSelect: {
-                if desc.id == "e2e_rnnt" { settings.modelMode = .quality } else { settings.modelMode = .speed }
-            },
-            onDownload: { Task { await download(desc) } }
-        )
-    }
-
-    private func download(_ desc: ModelDescriptor) async {
-        guard downloadingId == nil else { return }
-        lastAttempted = desc
-        downloadingId = desc.id
-        defer { downloadingId = nil }
+    private func download() async {
+        guard !isDownloading else { return }
+        isDownloading = true
+        defer { isDownloading = false }
         do {
-            try await manager.download(desc)
-            vm.modelReady = manager.isInstalled(desc)
-        } catch { /* error через manager.error */ }
-    }
-
-    private func retry() async {
-        guard let desc = lastAttempted else {
-            await download(settings.modelMode.descriptor)
-            return
-        }
-        await download(desc)
+            try await manager.download(model)
+            vm.modelReady = manager.isInstalled(model)
+        } catch { /* ошибка показывается через manager.error */ }
     }
 }
 
-struct ModelChoice: View {
+struct ModelRow: View {
     let name: String
     let meta: String
     let size: String
-    let isSelected: Bool
     let isInstalled: Bool
     let isDownloading: Bool
-    let onSelect: () -> Void
     let onDownload: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
-            Button(action: onSelect) {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle().stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: 1.5)
-                            .frame(width: 22, height: 22)
-                        if isSelected {
-                            Circle().fill(Color.accentColor).frame(width: 22, height: 22)
-                            Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundColor(.white)
-                        }
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(name).font(.system(size: 13, weight: .semibold))
-                        Text(meta).font(.system(size: 11)).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text(size).font(.system(size: 11)).foregroundStyle(.secondary)
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 5))
-                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).font(.system(size: 13, weight: .semibold))
+                Text(meta).font(.system(size: 11)).foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            Spacer()
+            Text(size).font(.system(size: 11)).foregroundStyle(.secondary)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 5))
 
             if !isInstalled {
-                Button(isDownloading ? "Скачиваю…" : "Загрузить") { onDownload() }
+                Button(isDownloading ? "Скачиваю…" : "Скачать") { onDownload() }
                     .disabled(isDownloading)
             } else {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
@@ -121,6 +90,5 @@ struct ModelChoice: View {
         }
         .padding(12)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(isSelected ? Color.accentColor : .clear, lineWidth: 1.5))
     }
 }

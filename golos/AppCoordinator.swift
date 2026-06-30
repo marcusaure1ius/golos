@@ -86,14 +86,14 @@ final class AppCoordinator: ObservableObject {
         }
 
         // Warmup модели если она установлена; иначе — открыть onboarding.
-        let mode = AppSettings.shared.modelMode
-        let dir = AppPaths.modelDir(mode.modelId)
+        let modelId = ModelDescriptor.gigaam.id
+        let dir = AppPaths.modelDir(modelId)
         Task { @MainActor [weak self] in
             guard let self else { return }
             if FileManager.default.fileExists(atPath: dir.appendingPathComponent("model.onnx").path) {
                 do {
                     try await self.dictation.warmup(modelDir: dir)
-                    Log.coordinator.info("warmup succeeded for \(mode.modelId, privacy: .public)")
+                    Log.coordinator.info("warmup succeeded for \(modelId, privacy: .public)")
                     // Прогрев Voice Processing AU — иначе первый start() блокирует MainActor на 2-3s.
                     self.audio.prewarm()
                 } catch {

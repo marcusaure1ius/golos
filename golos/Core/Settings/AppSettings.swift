@@ -6,13 +6,6 @@ import SwiftUI
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
-    enum ModelMode: String, CaseIterable, Identifiable {
-        case quality = "quality"
-        case speed   = "speed"
-        var id: String { rawValue }
-        var modelId: String { self == .quality ? "e2e_rnnt" : "e2e_ctc" }
-    }
-
     enum ThemeMode: String, CaseIterable, Identifiable {
         case auto, light, dark
         var id: String { rawValue }
@@ -22,7 +15,6 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    @AppStorage("model.mode")            var modelMode: ModelMode = .quality
     @AppStorage("ui.themeMode")          var themeMode: ThemeMode = .auto
     @AppStorage("hotkey.holdMs")         var holdMs: Int = 200
     @AppStorage("hotkey.doubleTapMs")    var doubleTapMs: Int = 300
@@ -39,13 +31,4 @@ final class AppSettings: ObservableObject {
     @AppStorage("ui.onboardingCompleted") var onboardingCompleted: Bool = false
 
     private init() {}
-}
-
-extension AppSettings.ModelMode {
-    var descriptor: ModelDescriptor {
-        switch self {
-        case .quality: return .gigaamRnnt
-        case .speed:   return .gigaamCtc
-        }
-    }
 }

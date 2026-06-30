@@ -2,7 +2,7 @@ import SwiftUI
 
 enum SidebarSection: String, Hashable, CaseIterable, Identifiable {
     case history, dictionary, stats
-    case general, hotkeys, microphone, models, about
+    case general, hotkeys, microphone, about
 
     var id: String { rawValue }
     var title: String {
@@ -13,7 +13,6 @@ enum SidebarSection: String, Hashable, CaseIterable, Identifiable {
         case .general:    return "Общее"
         case .hotkeys:    return "Горячие клавиши"
         case .microphone: return "Микрофон"
-        case .models:     return "Модели"
         case .about:      return "О приложении"
         }
     }
@@ -25,7 +24,6 @@ enum SidebarSection: String, Hashable, CaseIterable, Identifiable {
         case .general:    return "gearshape"
         case .hotkeys:    return "keyboard"
         case .microphone: return "mic"
-        case .models:     return "shippingbox"
         case .about:      return "info.circle"
         }
     }
@@ -39,7 +37,7 @@ struct SidebarView: View {
     @Environment(\.palette) var p
 
     private let transcriptionItems: [SidebarSection] = [.history, .dictionary, .stats]
-    private let settingsItems: [SidebarSection] = [.general, .hotkeys, .microphone, .models, .about]
+    private let settingsItems: [SidebarSection] = [.general, .hotkeys, .microphone, .about]
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
