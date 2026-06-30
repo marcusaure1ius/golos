@@ -8,6 +8,9 @@ final class OnboardingViewModel: ObservableObject {
     /// Выбор на шаге автозапуска (nil — ещё не выбрано). Хранится в vm, а не в
     /// шаге, чтобы выбор не сбрасывался при уходе/возврате (шаг пересоздаётся по .id).
     @Published var autolaunchChoice: Bool? = nil
+    /// Направление последней навигации: +1 вперёд, -1 назад. Определяет сторону
+    /// анимации перехода (иначе «Назад» проигрывается как «Вперёд»).
+    @Published var navDirection: Int = 1
     let totalSteps = 7
 
     var stepTitle: String {
@@ -23,6 +26,13 @@ final class OnboardingViewModel: ObservableObject {
         }
     }
 
-    func next() { if currentStep < totalSteps { withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { currentStep += 1 } } }
-    func back() { if currentStep > 1  { withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { currentStep -= 1 } } }
+    /// Переход на конкретный шаг с правильным направлением анимации.
+    func go(to step: Int) {
+        guard step >= 1, step <= totalSteps, step != currentStep else { return }
+        navDirection = step > currentStep ? 1 : -1
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { currentStep = step }
+    }
+
+    func next() { go(to: currentStep + 1) }
+    func back() { go(to: currentStep - 1) }
 }

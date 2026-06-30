@@ -47,7 +47,7 @@ struct DemoStep: View {
                 DemoField(text: $text)
 
                 if failed {
-                    Button("Назад к Универсальному доступу") { vm.currentStep = 3 }
+                    Button("Назад к Универсальному доступу") { vm.go(to: 3) }
                         .buttonStyle(GhostButton())
                 }
             }

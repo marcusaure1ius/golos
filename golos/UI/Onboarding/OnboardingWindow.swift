@@ -28,7 +28,7 @@ struct OnboardingRoot: View {
         let p = Palette.of(effectiveScheme)
         VStack(spacing: 0) {
             VStack(spacing: 8) {
-                PillProgress(total: vm.totalSteps, current: vm.currentStep) { vm.currentStep = $0 }
+                PillProgress(total: vm.totalSteps, current: vm.currentStep) { vm.go(to: $0) }
                 HStack {
                     Text(vm.stepTitle)
                         .font(.system(size: 12, weight: .semibold))
@@ -57,8 +57,9 @@ struct OnboardingRoot: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, 44).padding(.vertical, 12)
             .id(vm.currentStep)
-            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
-                                    removal: .move(edge: .leading).combined(with: .opacity)))
+            .transition(.asymmetric(
+                insertion: .move(edge: vm.navDirection >= 0 ? .trailing : .leading).combined(with: .opacity),
+                removal: .move(edge: vm.navDirection >= 0 ? .leading : .trailing).combined(with: .opacity)))
 
             Divider()
             HStack(spacing: 8) {
