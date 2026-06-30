@@ -1,5 +1,11 @@
 import Foundation
 
+/// Результат одного цикла диктовки: распознанный текст и исход вставки.
+struct DictationOutcome: Equatable {
+    let text: String
+    let outcome: InjectionOutcome
+}
+
 @MainActor
 final class DictationCoordinator: ObservableObject {
     enum State: Equatable {
@@ -13,6 +19,7 @@ final class DictationCoordinator: ObservableObject {
 
     @Published private(set) var state: State = .idle
     @Published private(set) var lastError: String? = nil
+    @Published private(set) var lastOutcome: DictationOutcome? = nil
 
     private let provider: TranscriptionProvider
     private let injector: TextInjector
@@ -118,6 +125,7 @@ final class DictationCoordinator: ObservableObject {
                 }
                 let outcome = await injector.inject(text: result.text)
                 Log.coordinator.info("inject outcome: \(String(describing: outcome), privacy: .public)")
+                self.lastOutcome = DictationOutcome(text: result.text, outcome: outcome)
                 if case .copiedToClipboard = outcome {
                     Notifications.show(title: L10n.notifClipboard, body: L10n.notifClipboardBody)
                 }

@@ -230,6 +230,22 @@ struct DictationCoordinatorTests {
         #expect(c.state == .idle)
     }
 
+    @Test @MainActor func publishesLastOutcomeAfterDictation() async throws {
+        let prov = MockTranscriptionProvider()
+        prov.finalizeReturn = .init(text: "привет мир", durationMs: 300)
+        let inj = MockTextInjector()
+        inj.outcome = .injected
+        let coordinator = DictationCoordinator(provider: prov, injector: inj, minSessionMs: 0)
+
+        coordinator.handle(.pttPressed)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        coordinator.handle(.pttReleased)
+        _ = await Self.firstWithTimeout(inj.signal)
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(coordinator.lastOutcome == DictationOutcome(text: "привет мир", outcome: .injected))
+    }
+
     @Test @MainActor func warmupIsIdempotentForSameDir() async throws {
         let prov = MockTranscriptionProvider()
         let coordinator = DictationCoordinator(provider: prov, injector: MockTextInjector())

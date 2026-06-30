@@ -7,7 +7,7 @@ protocol TextInjector {
     func inject(text: String) async -> InjectionOutcome
 }
 
-enum InjectionOutcome {
+enum InjectionOutcome: Equatable {
     /// Текст успешно вставлен в фокусное поле.
     case injected
     /// Фокус не на текстовом поле — текст положен в clipboard, надо показать notification.
