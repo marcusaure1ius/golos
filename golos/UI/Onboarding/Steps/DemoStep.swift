@@ -6,6 +6,7 @@ struct DemoStep: View {
     @State private var text: String = ""
     @State private var levels: [Float] = []
     @State private var failed = false
+    @State private var armed = false
 
     private var recording: Bool {
         if case .recording = coordinator.dictation.state { return true }
@@ -50,7 +51,7 @@ struct DemoStep: View {
             }
         }
         .onChange(of: recording) { isRecording in
-            if isRecording { levels = [] }
+            if isRecording { levels = []; armed = true }
         }
         .onReceive(coordinator.audio.$level) { lvl in
             guard recording else { return }
@@ -58,6 +59,7 @@ struct DemoStep: View {
             if levels.count > 32 { levels.removeFirst(levels.count - 32) }
         }
         .onReceive(coordinator.dictation.$lastOutcome.compactMap { $0 }) { outcome in
+            guard armed else { return }
             // Пустой транскрипт — игнорируем, не праздновать и не показывать фоллбэк.
             guard !outcome.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {

@@ -105,7 +105,7 @@ final class AppCoordinator: ObservableObject {
         }
         do {
             try await dictation.warmup(modelDir: dir)
-            Log.coordinator.info("warmup succeeded")
+            Log.coordinator.info("warmup succeeded for \(ModelDescriptor.gigaam.id, privacy: .public)")
             // Прогрев Voice Processing AU — иначе первый start() блокирует MainActor 2-3s.
             audio.prewarm()
         } catch {
