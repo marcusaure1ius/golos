@@ -39,4 +39,9 @@ enum AppPaths {
     static var historyFile: URL {
         appSupport.appendingPathComponent("history.json")
     }
+
+    /// Файл хранилища статистики.
+    static var statsFile: URL {
+        appSupport.appendingPathComponent("stats.json")
+    }
 }

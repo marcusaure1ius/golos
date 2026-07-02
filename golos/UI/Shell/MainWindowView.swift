@@ -107,7 +107,7 @@ struct MainWindowView: View {
         switch selection {
         case .history:    HistoryPane()
         case .dictionary: ContentUnavailableView("Скоро", systemImage: "text.book.closed")
-        case .stats:      ContentUnavailableView("Скоро", systemImage: "chart.bar")
+        case .stats:      StatsPane()
         case .general:    GeneralPane()
         case .hotkeys:    HotkeysPane()
         case .microphone: MicrophonePane()

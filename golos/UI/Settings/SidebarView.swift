@@ -28,7 +28,7 @@ enum SidebarSection: String, Hashable, CaseIterable, Identifiable {
         }
     }
     var disabled: Bool {
-        self == .dictionary || self == .stats
+        self == .dictionary
     }
 }
 

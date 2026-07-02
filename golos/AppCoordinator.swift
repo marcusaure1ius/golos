@@ -31,6 +31,11 @@ final class AppCoordinator: ObservableObject {
         guard !didStart else { return }
         didStart = true
 
+        // Бэкфилл статистики из истории — один раз, ДО первой диктовки. Если запустить
+        // позже (напр. при открытии пейна), record() уже наполнит buckets и seedIfNeeded
+        // пропустит историю — тоталы за всё время потеряются.
+        Task { await StatsStore.shared.seedIfNeeded(from: HistoryStore.shared.all()) }
+
         // Menu bar
         let mb = MenuBarController(
             onOpenSettings: openSettings,
