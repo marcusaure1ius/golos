@@ -8,7 +8,7 @@ private enum StatsRange { case days, weeks }
 // MARK: - Точка столбчатой диаграммы
 
 private struct ChartPoint: Identifiable {
-    let id = UUID()
+    var id: String { label }   // стабильный id — label уникален (дата/неделя); нужен для hover-матча
     let label: String
     let count: Int
 }
@@ -36,6 +36,8 @@ struct StatsPane: View {
     private var last7Days: [DaySeries] {
         StatsAggregator.lastDays(buckets, count: 7, calendar: .current, now: Date())
     }
+
+    private var yMax: Int { max(points.map(\.count).max() ?? 0, 1) }
 
     private var points: [ChartPoint] {
         switch range {
@@ -152,14 +154,30 @@ struct StatsPane: View {
 
     private var barChart: some View {
         Chart(points) { pt in
+            // Подсветка наведённого столбца — нейтральная плашка на всю высоту (позади бара).
+            if hovered == pt.id {
+                RectangleMark(
+                    x: .value("Дата", pt.label),
+                    yStart: .value("Низ", 0),
+                    yEnd: .value("Верх", yMax),
+                    width: .fixed(40)
+                )
+                .cornerRadius(6)
+                .foregroundStyle(p.selection)
+            }
             BarMark(
                 x: .value("Дата", pt.label),
                 y: .value("Диктовки", pt.count),
                 width: .fixed(24)
             )
             .cornerRadius(4)
-            .foregroundStyle(p.accent.opacity(hovered == nil || hovered == pt.id ? 1 : 0.35))
-            .annotation(position: .top, alignment: .center, spacing: 6) {
+            .foregroundStyle(p.accent)
+            .annotation(
+                position: .top,
+                alignment: .center,
+                spacing: 6,
+                overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
+            ) {
                 if hovered == pt.id {
                     VStack(spacing: 1) {
                         Text(pt.label)
@@ -181,8 +199,9 @@ struct StatsPane: View {
                 }
             }
         }
+        .chartYScale(domain: 0...yMax)
         .chartYAxis {
-            AxisMarks(position: .leading) { _ in
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     .foregroundStyle(p.borderSoft)
                 AxisValueLabel()
@@ -191,7 +210,7 @@ struct StatsPane: View {
             }
         }
         .chartXAxis {
-            AxisMarks { _ in
+            AxisMarks(values: points.map(\.label)) { _ in
                 AxisValueLabel()
                     .font(.system(size: 11))
                     .foregroundStyle(p.muted)
