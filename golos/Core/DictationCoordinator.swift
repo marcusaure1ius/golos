@@ -121,7 +121,9 @@ final class DictationCoordinator: ObservableObject {
                 let result = try await provider.finalize()
                 Log.coordinator.info("got transcript: '\(result.text, privacy: .public)' (\(result.durationMs, privacy: .public)ms)")
                 if !result.text.isEmpty {
-                    Task { await HistoryStore.shared.add(text: result.text, date: Date()) }
+                    let now = Date()
+                    Task { await HistoryStore.shared.add(text: result.text, date: now) }
+                    Task { await StatsStore.shared.record(wordCount: StatsAggregator.wordCount(result.text), date: now) }
                 }
                 let outcome = await injector.inject(text: result.text)
                 Log.coordinator.info("inject outcome: \(String(describing: outcome), privacy: .public)")
