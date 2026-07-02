@@ -101,12 +101,32 @@ final class ClipboardPasteInjector: TextInjector {
         ) == .success, let element = focused else { return false }
 
         let axElement = element as! AXUIElement
+
+        // Read-back verification. Qt/Electron-приложения (Telegram Desktop) отвечают
+        // .success на set kAXSelectedText, но фактически НИЧЕГО не вставляют — текст
+        // молча терялся, т.к. мы возвращали true и не доходили до Cmd+V fallback.
+        // Поэтому считаем успехом только реальное изменение значения поля. Если
+        // значение недоступно (AXGroup у Electron и т.п.) — тоже провал → Cmd+V.
+        guard let before = axValue(axElement) else { return false }
+
         let err = AXUIElementSetAttributeValue(
             axElement,
             kAXSelectedTextAttribute as CFString,
             text as CFString
         )
-        return err == .success
+        guard err == .success else { return false }
+
+        return axValue(axElement) != before
+    }
+
+    /// Значение фокусного элемента (kAXValue) как строка, либо nil если недоступно.
+    @MainActor
+    private func axValue(_ element: AXUIElement) -> String? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element, kAXValueAttribute as CFString, &value
+        ) == .success else { return nil }
+        return value as? String
     }
 
     // MARK: - Pasteboard polling
