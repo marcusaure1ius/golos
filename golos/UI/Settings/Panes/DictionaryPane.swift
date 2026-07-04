@@ -49,6 +49,7 @@ private struct DictionaryRuleRow: View {
 
             field(text: $rule.pattern, placeholder: "слышится как…")
                 .opacity(rule.enabled ? 1 : 0.5)
+                .onChange(of: rule.pattern) { _ in onCommit() }
 
             Image(systemName: "arrow.right")
                 .font(.system(size: 12, weight: .semibold))
@@ -56,6 +57,7 @@ private struct DictionaryRuleRow: View {
 
             field(text: $rule.replacement, placeholder: "заменить на…")
                 .opacity(rule.enabled ? 1 : 0.5)
+                .onChange(of: rule.replacement) { _ in onCommit() }
 
             Button(action: onDelete) {
                 Image(systemName: "trash")
