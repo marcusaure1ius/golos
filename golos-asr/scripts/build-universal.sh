@@ -12,6 +12,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CRATE_DIR="$SCRIPT_DIR/.."
 cd "$CRATE_DIR"
 
+# Обход дрейфа clang: тулчейн иногда сообщает несуществующую версию (напр. clang/16),
+# и линкер не находит libclang_rt.osx.a. Добавляем в RUSTFLAGS путь к реально
+# существующей версии (самой новой из найденных).
+RT_LIB="$(find /Library/Developer/CommandLineTools/usr/lib/clang \
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang \
+    -name libclang_rt.osx.a 2>/dev/null | sort -V | tail -1)"
+if [[ -n "$RT_LIB" ]]; then
+    export RUSTFLAGS="${RUSTFLAGS:-} -L $(dirname "$RT_LIB")"
+    echo "==> clang_rt: $(dirname "$RT_LIB")"
+fi
+
 echo "==> Building golos-asr for aarch64-apple-darwin"
 cargo build --release --target aarch64-apple-darwin
 
