@@ -89,15 +89,31 @@ impl Transcriber {
         let lut = biasing::build_lookup(self.model.vocab());
         let mut spots = Vec::new();
         for term in bias_terms {
-            let Some(tokens) = biasing::tokenize_term(term, &lut) else { continue };
-            if let Some(sp) = biasing::spot(&lp, &tokens, blank) {
-                if sp.mean_logp >= BIAS_MIN_MEAN_LOGP {
+            let Some(tokens) = biasing::tokenize_term(term, &lut) else {
+                tracing::info!("biasing: '{}' — не токенизируется вокабуляром, пропуск", term);
+                continue;
+            };
+            match biasing::spot(&lp, &tokens, blank) {
+                Some(sp) if sp.mean_logp >= BIAS_MIN_MEAN_LOGP => {
+                    tracing::info!(
+                        "biasing: '{}' — СПОТ mean_logp={:.2} кадры {}..{} (порог {:.1}) → применяю",
+                        term, sp.mean_logp, sp.start_frame, sp.end_frame, BIAS_MIN_MEAN_LOGP
+                    );
                     spots.push(sp);
                 }
+                Some(sp) => tracing::info!(
+                    "biasing: '{}' — mean_logp={:.2} ниже порога {:.1}, пропуск",
+                    term, sp.mean_logp, BIAS_MIN_MEAN_LOGP
+                ),
+                None => {}
             }
         }
 
+        let applied = spots.len();
         let final_ids = biasing::apply(&greedy.tokens, &greedy.timestamps, spots);
+        if applied > 0 {
+            tracing::info!("biasing: применено спотов: {}", applied);
+        }
 
         // id → строки токенов (фильтруем <unk>, как gigaam/mod.rs), затем в текст.
         let vocab = self.model.vocab();
