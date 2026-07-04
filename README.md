@@ -1,77 +1,89 @@
 # Golos
 
-Native macOS voice dictation, Wispr Flow–style, with **fully local** speech
-recognition via [GigaAM-v3](https://github.com/salute-developers/GigaAM) (ONNX).
-Press a hotkey, speak, and the transcribed text is pasted into the active app.
-Audio never leaves your machine.
+**Локальная голосовая диктовка для macOS в стиле Wispr Flow.**
+Зажми хоткей, говори — текст появится в активном приложении.
+Звук не покидает твой Mac: распознавание полностью локальное,
+на [GigaAM-v3](https://github.com/salute-developers/GigaAM) (ONNX).
 
-> UI and in-app strings are in Russian; the recognizer targets Russian speech.
+[![CI](https://github.com/marcusaure1ius/golos/actions/workflows/ci.yml/badge.svg)](https://github.com/marcusaure1ius/golos/actions/workflows/ci.yml)
+[![Релиз](https://img.shields.io/github/v/release/marcusaure1ius/golos?style=flat&label=релиз)](https://github.com/marcusaure1ius/golos/releases/latest)
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue?style=flat&logo=apple)
+![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-arm64-orange?style=flat)
+![Swift](https://img.shields.io/badge/Swift-5.9-F05138?style=flat&logo=swift&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-sidecar-DEA584?style=flat&logo=rust&logoColor=white)
+[![Лицензия MIT](https://img.shields.io/badge/лицензия-MIT-green?style=flat)](LICENSE)
 
-## Demo
+## Демо
 
-Hold the hotkey and speak — a pill shows the live waveform. Release, and the
-transcript is pasted into the active app.
+Зажал хоткей — говоришь, pill показывает живую волну. Отпустил — текст
+вставился в активное приложение:
 
-![Golos recording pill](assets/pill.png)
+![Запись в golos](assets/pill.png)
 
-Every dictation is saved to a searchable history:
+Каждая диктовка сохраняется в историю с поиском:
 
-![Golos history](assets/history.png)
+![История golos](assets/history.png)
 
-The settings window (Codex-style UI):
+Окно настроек:
 
-![Golos settings](assets/settings.png)
+![Настройки golos](assets/settings.png)
 
-## How it works
+## Как это работает
 
-A Swift app handles the UI, global hotkey, audio capture, and paste injection.
-A small Rust sidecar (`golos-asr`) runs the ONNX inference. They talk over a
-JSON-lines protocol on stdin/stdout, with raw PCM streamed through a named FIFO.
+Swift-приложение отвечает за UI, глобальный хоткей, захват звука и вставку
+текста. Небольшой Rust-сайдкар (`golos-asr`) гоняет ONNX-инференс. Общаются
+по JSON-lines через stdin/stdout, сырой PCM летит через named FIFO.
 
 ```
-hotkey → record → Rust sidecar (GigaAM-v3 ONNX) → transcript → paste
+хоткей → запись → Rust-сайдкар (GigaAM-v3 ONNX) → транскрипт → вставка
 ```
 
-## Requirements
+## Установка
 
-- macOS 13 (Ventura) or later
-- **Apple Silicon** — Intel (x86_64) is currently unsupported (no prebuilt
-  ONNX Runtime for x86_64 via the `ort` dependency)
-- [Rust toolchain](https://rustup.rs/) (to build the sidecar)
-- Xcode 15+
-- The speech model is downloaded on first run (see [Speech model](#speech-model))
+Готовый DMG — на [странице релизов](https://github.com/marcusaure1ius/golos/releases/latest).
+Пошаговая инструкция (включая обход Gatekeeper — приложение не подписано
+через Apple): [INSTALL.md](INSTALL.md).
 
-## Build
+## Требования
 
-The sidecar is **not** built by Xcode — build it first, then build the app.
+- macOS 13 (Ventura) или новее
+- **Apple Silicon** — Intel (x86_64) не поддерживается (у зависимости `ort`
+  нет prebuilt ONNX Runtime под x86_64)
+- Для сборки из исходников: Xcode 15+ и [Rust toolchain](https://rustup.rs/)
+- Модель распознавания скачивается при первом запуске
+  (см. [Модель распознавания](#модель-распознавания))
+
+## Сборка из исходников
+
+Сайдкар **не** собирается Xcode — сначала собери его, потом приложение:
 
 ```bash
-# 1. Build the universal Rust sidecar
+# 1. Собрать Rust-сайдкар
 bash golos-asr/scripts/build-universal.sh
 
-# 2. Build the app (Xcode copies the prebuilt sidecar into the bundle)
+# 2. Собрать приложение (Xcode копирует уже собранный сайдкар в bundle)
 xcodebuild build -project golos.xcodeproj -scheme golos \
   -configuration Debug -destination 'platform=macOS'
 ```
 
-If you change `golos-asr/src/*.rs`, rebuild the sidecar before rebuilding the app.
+Изменил `golos-asr/src/*.rs` — пересобери сайдкар до пересборки приложения.
 
-## Run
+## Первый запуск
 
-On first launch, the onboarding flow walks you through:
+Онбординг проведёт по шагам:
 
-1. **Microphone** access — to capture your voice
-2. **Accessibility** access — to register the global hotkey and paste text
-3. **Input Monitoring** — to detect the hotkey
-4. **Model download** — fetches the GigaAM-v3 ONNX weights
+1. **Микрофон** — чтобы слышать речь
+2. **Универсальный доступ** — для глобального хоткея и вставки текста
+3. **Мониторинг ввода** — для отслеживания хоткея
+4. **Загрузка модели** — скачиваются ONNX-веса GigaAM-v3
 
-Then hold the hotkey (default: **Right Option**), speak, release, and the text
-is pasted into the frontmost app.
+Дальше: зажми хоткей (по умолчанию **правый Option**), скажи фразу,
+отпусти — текст вставится в активное приложение.
 
-## Test
+## Тесты
 
 ```bash
-# Rust (sidecar)
+# Rust (сайдкар)
 cargo test
 
 # Swift
@@ -79,23 +91,23 @@ xcodebuild test -project golos.xcodeproj -scheme golos \
   -destination 'platform=macOS'
 ```
 
-## Speech model
+## Модель распознавания
 
-The GigaAM-v3 weights are **not** bundled in this repository — they are
-downloaded on first run.
+Веса GigaAM-v3 **не** лежат в репозитории — они скачиваются при первом
+запуске.
 
-- The GigaAM-v3 model is published by **SaluteDevices** (Sber) under the
-  **MIT License** (since 2024-12) — commercial use, redistribution and
-  fine-tuning are permitted, provided attribution is retained.
-  Source: [salute-developers/GigaAM](https://github.com/salute-developers/GigaAM).
-- The weights are downloaded in **ONNX** form from a third-party conversion,
+- Модель GigaAM-v3 опубликована **SaluteDevices** (Сбер) под лицензией
+  **MIT** (с декабря 2024) — коммерческое использование, распространение и
+  дообучение разрешены при сохранении атрибуции.
+  Источник: [salute-developers/GigaAM](https://github.com/salute-developers/GigaAM).
+- Веса скачиваются в формате **ONNX** из сторонней конверсии
   [istupakov/gigaam-v3-onnx](https://huggingface.co/istupakov/gigaam-v3-onnx),
-  also MIT-licensed and attributing the original.
+  тоже MIT с атрибуцией оригинала.
 
-## License
+## Лицензия
 
-golos is licensed under the [MIT License](LICENSE).
+golos распространяется под [лицензией MIT](LICENSE).
 
-Third-party components (ONNX Runtime, Rust crates) and their licenses are listed
-in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). All are permissive
-(MIT / Apache-2.0 family).
+Сторонние компоненты (ONNX Runtime, Rust-крейты) и их лицензии перечислены
+в [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Все — пермиссивные
+(семейство MIT / Apache-2.0).
