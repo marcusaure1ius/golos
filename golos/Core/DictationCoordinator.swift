@@ -21,6 +21,11 @@ final class DictationCoordinator: ObservableObject {
     @Published private(set) var lastError: String? = nil
     @Published private(set) var lastOutcome: DictationOutcome? = nil
 
+    /// Когда задан — распознанный текст уходит сюда (сырой, без чистки/словаря/вставки),
+    /// а обычная вставка/история/статистика пропускаются. Используется калибровкой,
+    /// чтобы измерять именно вывод модели. Биасинг при этом тоже отключается.
+    var transcriptCapture: ((String) -> Void)?
+
     private let provider: TranscriptionProvider
     private let injector: TextInjector
     private let minSessionMs: Int
@@ -87,7 +92,8 @@ final class DictationCoordinator: ObservableObject {
         Task {
             do {
                 // Термины для biasing — правильные написания из включённых правил словаря.
-                let biasTerms = await DictionaryStore.shared.all()
+                // В режиме калибровки биасинг отключаем, чтобы измерить сырой вывод модели.
+                let biasTerms: [String] = self.transcriptCapture != nil ? [] : await DictionaryStore.shared.all()
                     .filter { $0.enabled && !$0.replacement.isEmpty }
                     .map { $0.replacement }
                 try await provider.beginSession(biasTerms: biasTerms)
@@ -123,6 +129,13 @@ final class DictationCoordinator: ObservableObject {
                 await provider.flushSamples()
                 Log.coordinator.info("finalizing — calling sidecar")
                 let result = try await provider.finalize()
+                // Режим калибровки: отдаём сырой текст наружу, без вставки/истории/словаря.
+                if let capture = self.transcriptCapture {
+                    Log.coordinator.info("calibration capture: '\(result.text, privacy: .public)'")
+                    capture(result.text)
+                    self.state = .idle
+                    return
+                }
                 // Постобработка до истории/статистики/вставки: сначала чистим хезитации
                 // («э-э», «мм»…), затем применяем пользовательский словарь замен.
                 let cleaned = FillerCleaner.clean(result.text)

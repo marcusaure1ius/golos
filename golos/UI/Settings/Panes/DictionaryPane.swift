@@ -96,6 +96,9 @@ private struct DictionaryRuleRow: View {
 
 struct DictionaryPane: View {
     @StateObject private var vm = DictionaryPaneViewModel()
+    @StateObject private var calibration = CalibrationSession()
+    @EnvironmentObject private var app: AppCoordinator
+    @State private var showCalibration = false
     @Environment(\.palette) var p
 
     var body: some View {
@@ -112,6 +115,9 @@ struct DictionaryPane: View {
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 10)
+
+                calibrationCard
+                    .padding(.top, 20)
 
                 if vm.rules.isEmpty {
                     emptyState
@@ -137,6 +143,50 @@ struct DictionaryPane: View {
             .frame(maxWidth: .infinity, alignment: .center)
         }
         .task { await vm.reload() }
+        .sheet(isPresented: $showCalibration) {
+            CalibrationView(
+                session: calibration,
+                coordinator: app.dictation,
+                onClose: { showCalibration = false; Task { await vm.reload() } }
+            )
+            .environment(\.palette, p)
+        }
+    }
+
+    private var calibrationCard: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "waveform.badge.mic")
+                .font(.system(size: 22, weight: .regular))
+                .foregroundStyle(p.accent)
+                .frame(width: 34)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Калибровка распознавания")
+                    .font(.system(size: 14.5, weight: .semibold))
+                    .foregroundStyle(p.ink)
+                Text("Прочитай несколько фраз — подберём слова, которые модель путает на твоём голосе, и добавим в словарь.")
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(p.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 12)
+            Button(action: { showCalibration = true }) {
+                Text("Пройти")
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 18)
+                    .background(p.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(p.card)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(p.fieldBorder, lineWidth: 1)
+        )
     }
 
     private var addButton: some View {
