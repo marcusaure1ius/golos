@@ -119,15 +119,17 @@ final class DictationCoordinator: ObservableObject {
                 await provider.flushSamples()
                 Log.coordinator.info("finalizing — calling sidecar")
                 let result = try await provider.finalize()
-                Log.coordinator.info("got transcript: '\(result.text, privacy: .public)' (\(result.durationMs, privacy: .public)ms)")
-                if !result.text.isEmpty {
+                // Постобработка по пользовательскому словарю до истории/статистики/вставки.
+                let text = TranscriptCorrector.apply(result.text, rules: await DictionaryStore.shared.all())
+                Log.coordinator.info("got transcript: '\(text, privacy: .public)' (\(result.durationMs, privacy: .public)ms)")
+                if !text.isEmpty {
                     let now = Date()
-                    Task { await HistoryStore.shared.add(text: result.text, date: now) }
-                    Task { await StatsStore.shared.record(wordCount: StatsAggregator.wordCount(result.text), date: now) }
+                    Task { await HistoryStore.shared.add(text: text, date: now) }
+                    Task { await StatsStore.shared.record(wordCount: StatsAggregator.wordCount(text), date: now) }
                 }
-                let outcome = await injector.inject(text: result.text)
+                let outcome = await injector.inject(text: text)
                 Log.coordinator.info("inject outcome: \(String(describing: outcome), privacy: .public)")
-                self.lastOutcome = DictationOutcome(text: result.text, outcome: outcome)
+                self.lastOutcome = DictationOutcome(text: text, outcome: outcome)
                 if case .copiedToClipboard = outcome {
                     Notifications.show(title: L10n.notifClipboard, body: L10n.notifClipboardBody)
                 }

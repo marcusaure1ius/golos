@@ -106,7 +106,7 @@ struct MainWindowView: View {
     private var paneView: some View {
         switch selection {
         case .history:    HistoryPane()
-        case .dictionary: ContentUnavailableView("Скоро", systemImage: "text.book.closed")
+        case .dictionary: DictionaryPane()
         case .stats:      StatsPane()
         case .general:    GeneralPane()
         case .hotkeys:    HotkeysPane()
