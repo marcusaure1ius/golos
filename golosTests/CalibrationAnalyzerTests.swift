@@ -20,11 +20,19 @@ import Foundation
         #expect(r.biasTerms == ["послезавтра"])
     }
 
-    @Test func substitutionYieldsBiasTermAndRule() {
-        // Одинаковая длина, одно слово искажено → и bias, и правило замены.
+    @Test func substitutionYieldsRuleWithoutDuplicateBias() {
+        // Слово покрыто правилом замены → отдельный bias-термин не дублируем
+        // (правило само биасит по «заменить на»).
         let r = CalibrationAnalyzer.analyze([pair("открой гитхаб", "открой гидхаб")])
-        #expect(r.biasTerms == ["гитхаб"])
         #expect(r.suggestions == [CorrectionSuggestion(pattern: "гидхаб", replacement: "гитхаб")])
+        #expect(r.biasTerms.isEmpty)
+    }
+
+    @Test func missingWordStaysBiasOnlyWhenNoRule() {
+        // Слово пропало (разная длина фраз, правила нет) → остаётся чистым bias-термином.
+        let r = CalibrationAnalyzer.analyze([pair("это послезавтра точно", "это после завтра точно")])
+        #expect(r.biasTerms == ["послезавтра"])
+        #expect(r.suggestions.isEmpty)
     }
 
     @Test func ignoresCasingOnlyDifference() {

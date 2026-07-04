@@ -64,7 +64,12 @@ enum CalibrationAnalyzer {
             }
         }
 
-        return CalibrationResult(biasTerms: biasTerms, suggestions: suggestions)
+        // Правило замены само работает как bias (координатор биасит по «заменить на»),
+        // поэтому слова, уже покрытые правилом, не дублируем отдельным bias-термином.
+        let ruleReplacements = Set(suggestions.map { $0.replacement.lowercased() })
+        let dedupedBias = biasTerms.filter { !ruleReplacements.contains($0.lowercased()) }
+
+        return CalibrationResult(biasTerms: dedupedBias, suggestions: suggestions)
     }
 
     // MARK: - Внутреннее
