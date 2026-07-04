@@ -13,10 +13,18 @@ struct SidecarProtocolTests {
     }
 
     @Test func beginSessionEncodesWithId() throws {
-        let req = SidecarRequest.beginSession(id: 2)
+        let req = SidecarRequest.beginSession(id: 2, biasTerms: [])
         let str = String(data: try JSONEncoder().encode(req), encoding: .utf8)!
         #expect(str.contains(#""type":"begin_session""#))
         #expect(str.contains(#""id":2"#))
+    }
+
+    @Test func beginSessionEncodesBiasTerms() throws {
+        let req = SidecarRequest.beginSession(id: 4, biasTerms: ["GigaAM", "Толк"])
+        let str = String(data: try JSONEncoder().encode(req), encoding: .utf8)!
+        #expect(str.contains(#""bias_terms""#))
+        #expect(str.contains("GigaAM"))
+        #expect(str.contains("Толк"))
     }
 
     @Test func endSessionEncodesWithSamplesTotal() throws {

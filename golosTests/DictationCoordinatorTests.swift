@@ -16,7 +16,7 @@ final class MockTranscriptionProvider: TranscriptionProvider, @unchecked Sendabl
 
     func start(modelDir: URL) async throws { startCalledWith = modelDir; startCallCount += 1 }
     func resetSampleCounter() { feedBytes = 0 }
-    func beginSession() async throws { beginCalled = true }
+    func beginSession(biasTerms: [String]) async throws { beginCalled = true }
     func feed(samples: Data) throws { feedBytes += samples.count }
     func flushSamples() async { flushOrder.append("flush") }
     func finalize() async throws -> Transcript { flushOrder.append("finalize"); return finalizeReturn }
@@ -49,7 +49,7 @@ final class FailingMockProvider: TranscriptionProvider, @unchecked Sendable {
     var partials: AsyncStream<String> = AsyncStream { _ in }
     func start(modelDir: URL) async throws {}
     func resetSampleCounter() {}
-    func beginSession() async throws { throw TranscriptionError.protocolError("forced") }
+    func beginSession(biasTerms: [String]) async throws { throw TranscriptionError.protocolError("forced") }
     func feed(samples: Data) throws {}
     func flushSamples() async {}
     func finalize() async throws -> Transcript { Transcript(text: "", durationMs: 0) }
@@ -124,7 +124,7 @@ struct DictationCoordinatorTests {
             init(gate: SlowGate) { self.gate = gate }
             func start(modelDir: URL) async throws {}
             func resetSampleCounter() {}
-            func beginSession() async throws { await gate.wait() }
+            func beginSession(biasTerms: [String]) async throws { await gate.wait() }
             func feed(samples: Data) throws {}
             func flushSamples() async {}
             func finalize() async throws -> Transcript { Transcript(text: "", durationMs: 0) }

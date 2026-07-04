@@ -8,7 +8,12 @@ pub enum Request {
     /// Загрузить модель из директории. Должно прийти один раз перед begin_session.
     Load { id: u64, model_path: PathBuf },
     /// Начать новую сессию записи. Аудио идёт по audio-fd.
-    BeginSession { id: u64 },
+    /// `bias_terms` — слова для contextual biasing (правильные написания из словаря).
+    BeginSession {
+        id: u64,
+        #[serde(default)]
+        bias_terms: Vec<String>,
+    },
     /// Закончить сессию. Sidecar финализирует и шлёт Response::Final.
     EndSession { id: u64, samples_total: u64 },
     /// Прервать текущую сессию без транскрипции.
@@ -21,7 +26,7 @@ impl Request {
     pub fn id(&self) -> u64 {
         match self {
             Request::Load { id, .. } => *id,
-            Request::BeginSession { id } => *id,
+            Request::BeginSession { id, .. } => *id,
             Request::EndSession { id, .. } => *id,
             Request::Cancel { id } => *id,
             Request::Shutdown { id } => *id,

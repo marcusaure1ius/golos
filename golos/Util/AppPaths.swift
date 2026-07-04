@@ -44,4 +44,9 @@ enum AppPaths {
     static var statsFile: URL {
         appSupport.appendingPathComponent("stats.json")
     }
+
+    /// Файл пользовательского словаря замен.
+    static var dictionaryFile: URL {
+        appSupport.appendingPathComponent("dictionary.json")
+    }
 }

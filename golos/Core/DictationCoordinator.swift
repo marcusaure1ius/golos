@@ -21,6 +21,11 @@ final class DictationCoordinator: ObservableObject {
     @Published private(set) var lastError: String? = nil
     @Published private(set) var lastOutcome: DictationOutcome? = nil
 
+    /// Когда задан — распознанный текст уходит сюда (сырой, без чистки/словаря/вставки),
+    /// а обычная вставка/история/статистика пропускаются. Используется калибровкой,
+    /// чтобы измерять именно вывод модели. Биасинг при этом тоже отключается.
+    var transcriptCapture: ((String) -> Void)?
+
     private let provider: TranscriptionProvider
     private let injector: TextInjector
     private let minSessionMs: Int
@@ -86,7 +91,12 @@ final class DictationCoordinator: ObservableObject {
         provider.resetSampleCounter()
         Task {
             do {
-                try await provider.beginSession()
+                // Термины для biasing — правильные написания из включённых правил словаря.
+                // В режиме калибровки биасинг отключаем, чтобы измерить сырой вывод модели.
+                let biasTerms: [String] = self.transcriptCapture != nil ? [] : await DictionaryStore.shared.all()
+                    .filter { $0.enabled && !$0.replacement.isEmpty }
+                    .map { $0.replacement }
+                try await provider.beginSession(biasTerms: biasTerms)
                 // Защита от race: пока beginSession был в полёте, user мог отпустить
                 // хоткей и state ушёл в .idle/.transcribing/.error — нельзя
                 // перезаписывать поверх.
@@ -119,15 +129,26 @@ final class DictationCoordinator: ObservableObject {
                 await provider.flushSamples()
                 Log.coordinator.info("finalizing — calling sidecar")
                 let result = try await provider.finalize()
-                Log.coordinator.info("got transcript: '\(result.text, privacy: .public)' (\(result.durationMs, privacy: .public)ms)")
-                if !result.text.isEmpty {
-                    let now = Date()
-                    Task { await HistoryStore.shared.add(text: result.text, date: now) }
-                    Task { await StatsStore.shared.record(wordCount: StatsAggregator.wordCount(result.text), date: now) }
+                // Режим калибровки: отдаём сырой текст наружу, без вставки/истории/словаря.
+                if let capture = self.transcriptCapture {
+                    Log.coordinator.info("calibration capture: '\(result.text, privacy: .public)'")
+                    capture(result.text)
+                    self.state = .idle
+                    return
                 }
-                let outcome = await injector.inject(text: result.text)
+                // Постобработка до истории/статистики/вставки: сначала чистим хезитации
+                // («э-э», «мм»…), затем применяем пользовательский словарь замен.
+                let cleaned = FillerCleaner.clean(result.text)
+                let text = TranscriptCorrector.apply(cleaned, rules: await DictionaryStore.shared.all())
+                Log.coordinator.info("got transcript: '\(text, privacy: .public)' (\(result.durationMs, privacy: .public)ms)")
+                if !text.isEmpty {
+                    let now = Date()
+                    Task { await HistoryStore.shared.add(text: text, date: now) }
+                    Task { await StatsStore.shared.record(wordCount: StatsAggregator.wordCount(text), date: now) }
+                }
+                let outcome = await injector.inject(text: text)
                 Log.coordinator.info("inject outcome: \(String(describing: outcome), privacy: .public)")
-                self.lastOutcome = DictationOutcome(text: result.text, outcome: outcome)
+                self.lastOutcome = DictationOutcome(text: text, outcome: outcome)
                 if case .copiedToClipboard = outcome {
                     Notifications.show(title: L10n.notifClipboard, body: L10n.notifClipboardBody)
                 }
