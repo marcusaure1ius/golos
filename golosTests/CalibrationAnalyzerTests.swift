@@ -49,16 +49,18 @@ import Foundation
     }
 
     @Test func preservesExpectedCasingInBiasTerm() {
-        let r = CalibrationAnalyzer.analyze([pair("позвони Денису", "позвони денисы")])
+        // Пропущенное слово (разная длина → правила нет) сохраняет регистр эталона.
+        let r = CalibrationAnalyzer.analyze([pair("позвони Денису срочно", "позвони денисе рано срочно")])
         #expect(r.biasTerms == ["Денису"])
+        #expect(r.suggestions.isEmpty)
     }
 
-    @Test func dedupesAcrossPairs() {
+    @Test func dedupesMissingWordAcrossPairs() {
         let r = CalibrationAnalyzer.analyze([
-            pair("открой гитхаб", "открой гидхаб"),
-            pair("снова гитхаб", "снова гид хаб"),
+            pair("это послезавтра точно", "это после завтра точно"),
+            pair("снова послезавтра там", "снова после завтра там"),
         ])
-        #expect(r.biasTerms == ["гитхаб"])
+        #expect(r.biasTerms == ["послезавтра"])
     }
 
     @Test func stripsPunctuation() {
