@@ -11,7 +11,8 @@ protocol TranscriptionProvider: AnyObject {
     func resetSampleCounter()
 
     /// Начать новую сессию записи — после этого вызовы `feed` будут учтены.
-    func beginSession() async throws
+    /// `biasTerms` — слова для contextual biasing (правильные написания из словаря).
+    func beginSession(biasTerms: [String]) async throws
 
     /// Прокачать сэмплы 16kHz mono Int16 PCM (little-endian).
     /// Семантика — non-blocking: данные кладутся в выходной буфер.

@@ -124,9 +124,9 @@ final class LocalGigaAMProvider: TranscriptionProvider {
         }
     }
 
-    func beginSession() async throws {
+    func beginSession(biasTerms: [String]) async throws {
         let resp = try await roundtrip(makeRequest: { id in
-            .beginSession(id: id)
+            .beginSession(id: id, biasTerms: biasTerms)
         }, timeout: 5)
         guard case .sessionStarted = resp else {
             throw TranscriptionError.protocolError("expected session_started, got \(resp)")

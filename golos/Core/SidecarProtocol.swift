@@ -3,7 +3,7 @@ import Foundation
 /// Управляющие сообщения от Swift app → sidecar (по stdin sidecar'а, JSON-lines).
 enum SidecarRequest: Encodable, Equatable {
     case load(id: UInt64, modelPath: String)
-    case beginSession(id: UInt64)
+    case beginSession(id: UInt64, biasTerms: [String])
     case endSession(id: UInt64, samplesTotal: UInt64)
     case cancel(id: UInt64)
     case shutdown(id: UInt64)
@@ -11,7 +11,7 @@ enum SidecarRequest: Encodable, Equatable {
     var id: UInt64 {
         switch self {
         case .load(let i, _): return i
-        case .beginSession(let i): return i
+        case .beginSession(let i, _): return i
         case .endSession(let i, _): return i
         case .cancel(let i): return i
         case .shutdown(let i): return i
@@ -22,6 +22,7 @@ enum SidecarRequest: Encodable, Equatable {
         case type, id
         case modelPath = "model_path"
         case samplesTotal = "samples_total"
+        case biasTerms = "bias_terms"
     }
 
     func encode(to encoder: Encoder) throws {
@@ -31,8 +32,11 @@ enum SidecarRequest: Encodable, Equatable {
         case .load(_, let p):
             try c.encode("load", forKey: .type)
             try c.encode(p, forKey: .modelPath)
-        case .beginSession:
+        case .beginSession(_, let terms):
             try c.encode("begin_session", forKey: .type)
+            if !terms.isEmpty {
+                try c.encode(terms, forKey: .biasTerms)
+            }
         case .endSession(_, let total):
             try c.encode("end_session", forKey: .type)
             try c.encode(total, forKey: .samplesTotal)

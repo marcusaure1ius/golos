@@ -13,12 +13,16 @@ fn request_load_round_trip() {
 
 #[test]
 fn request_begin_session_round_trip() {
-    let r = Request::BeginSession { id: 5 };
+    let r = Request::BeginSession { id: 5, bias_terms: vec!["GigaAM".into()] };
     let json = serde_json::to_string(&r).unwrap();
     assert!(json.contains(r#""type":"begin_session""#));
     assert!(json.contains(r#""id":5"#));
+    assert!(json.contains("GigaAM"));
     let back: Request = serde_json::from_str(&json).unwrap();
     assert_eq!(r, back);
+    // Обратная совместимость: старое сообщение без bias_terms парсится (serde default).
+    let legacy: Request = serde_json::from_str(r#"{"type":"begin_session","id":5}"#).unwrap();
+    assert_eq!(legacy, Request::BeginSession { id: 5, bias_terms: vec![] });
 }
 
 #[test]
@@ -77,7 +81,7 @@ fn end_session_with_samples_total_round_trip() {
 
 #[test]
 fn request_id_round_trip() {
-    let req = Request::BeginSession { id: 42 };
+    let req = Request::BeginSession { id: 42, bias_terms: vec![] };
     let json = serde_json::to_string(&req).unwrap();
     assert!(json.contains("\"id\":42"));
 }

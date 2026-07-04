@@ -25,6 +25,8 @@ pub struct Session {
     state: State,
     transcriber: Option<Transcriber>,
     buffer: AudioBuffer,
+    /// Термины для contextual biasing текущей сессии (из BeginSession).
+    bias_terms: Vec<String>,
     /// Каталог под temp WAV-файлы; живёт всю жизнь Session.
     temp_dir: TempDir,
 }
@@ -35,6 +37,7 @@ impl Session {
             state: State::Idle,
             transcriber: None,
             buffer: AudioBuffer::new(),
+            bias_terms: Vec::new(),
             temp_dir: tempfile::tempdir()?,
         })
     }
@@ -53,8 +56,9 @@ impl Session {
         let id = req.id();
         match (self.state, req) {
             (_, Request::Load { model_path, .. }) => self.do_load(id, model_path),
-            (State::Loaded, Request::BeginSession { .. }) => {
+            (State::Loaded, Request::BeginSession { bias_terms, .. }) => {
                 self.buffer.clear();
+                self.bias_terms = bias_terms;
                 self.state = State::Recording;
                 Response::SessionStarted { id }
             }
@@ -92,6 +96,7 @@ impl Session {
     }
 
     fn do_finalize(&mut self, id: u64) -> Response {
+        let bias_terms = std::mem::take(&mut self.bias_terms);
         let t = match self.transcriber.as_mut() {
             Some(t) => t,
             None => {
@@ -120,7 +125,7 @@ impl Session {
                 message: format!("{:#}", e),
             };
         }
-        let result = t.transcribe_wav(&wav_path);
+        let result = t.transcribe_wav(&wav_path, &bias_terms);
         self.buffer.clear();
         self.state = State::Loaded;
         match result {
@@ -146,7 +151,7 @@ mod tests {
     #[test]
     fn begin_without_load_is_error() {
         let mut s = Session::new().unwrap();
-        let r = s.handle(Request::BeginSession { id: 1 });
+        let r = s.handle(Request::BeginSession { id: 1, bias_terms: vec![] });
         assert!(matches!(r, Response::Error { ref kind, .. } if kind == "invalid_state"));
         assert_eq!(s.state(), State::Idle);
     }

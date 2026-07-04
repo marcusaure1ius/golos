@@ -86,7 +86,11 @@ final class DictationCoordinator: ObservableObject {
         provider.resetSampleCounter()
         Task {
             do {
-                try await provider.beginSession()
+                // Термины для biasing — правильные написания из включённых правил словаря.
+                let biasTerms = await DictionaryStore.shared.all()
+                    .filter { $0.enabled && !$0.replacement.isEmpty }
+                    .map { $0.replacement }
+                try await provider.beginSession(biasTerms: biasTerms)
                 // Защита от race: пока beginSession был в полёте, user мог отпустить
                 // хоткей и state ушёл в .idle/.transcribing/.error — нельзя
                 // перезаписывать поверх.
