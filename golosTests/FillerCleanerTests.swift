@@ -15,7 +15,14 @@ import Foundation
     }
 
     @Test func removesMultipleFillers() {
-        #expect(FillerCleaner.clean("ну э-э мм давай") == "ну давай") // «ну» не трогаем (союз/лексика)
+        #expect(FillerCleaner.clean("вот э-э мм давай") == "вот давай")
+    }
+
+    @Test func removesNuAsWholeWord() {
+        #expect(FillerCleaner.clean("ну давай пойдём") == "давай пойдём")
+        #expect(FillerCleaner.clean("Ну ладно") == "Ладно")
+        // Не трогает слова, где «ну» — часть слова.
+        #expect(FillerCleaner.clean("нужно это сделать") == "нужно это сделать")
     }
 
     @Test func doesNotTouchRealWordsContainingFillerLetters() {
