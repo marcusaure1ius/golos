@@ -126,10 +126,10 @@ struct CalibrationView: View {
                 .foregroundStyle(p.ink)
                 .padding(.top, 24)
 
-            let found = (session.result?.biasTerms.count ?? 0) + (session.result?.suggestions.count ?? 0)
+            let found = session.result?.suggestions.count ?? 0
             Text(found == 0
                  ? "Модель распознала всё верно — добавлять нечего. Отличный голос!"
-                 : "Нашли \(found) слов(а), которые модель путает. Добавить их в словарь?")
+                 : "Нашли \(found) слов(а), которые модель путает. Добавить исправления в словарь?")
                 .font(.system(size: 14))
                 .foregroundStyle(p.muted)
                 .multilineTextAlignment(.center)
@@ -140,9 +140,6 @@ struct CalibrationView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(session.result?.suggestions ?? [], id: \.pattern) { s in
                         row(icon: "arrow.right", left: s.pattern, right: s.replacement)
-                    }
-                    ForEach(session.result?.biasTerms ?? [], id: \.self) { term in
-                        row(icon: "waveform", left: nil, right: term)
                     }
                 }
                 .padding(.horizontal, 28)

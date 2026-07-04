@@ -85,13 +85,9 @@ final class CalibrationSession: ObservableObject {
 
     // MARK: - Применение
 
-    /// Записать найденное в словарь: bias-термины (только распознавание) и правила
-    /// замены (распознавание + правка текста).
+    /// Записать найденные правила замены в словарь (они же работают как bias).
     func apply() async {
         guard let result else { return }
-        for term in result.biasTerms {
-            await DictionaryStore.shared.add(pattern: "", replacement: term)
-        }
         for s in result.suggestions {
             await DictionaryStore.shared.add(pattern: s.pattern, replacement: s.replacement)
         }
