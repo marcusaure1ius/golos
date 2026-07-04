@@ -39,37 +39,61 @@ enum CalibrationAnalyzer {
         for pair in pairs {
             let expected = tokenize(pair.expected)
             let heard = tokenize(pair.heard)
-            let heardLower = Set(heard.map { $0.lowercased() })
 
-            // Слова эталона, которых нет в распознанном → bias.
-            for word in expected where word.count >= minWordLength {
-                let key = word.lowercased()
-                if !heardLower.contains(key), !biasSeen.contains(key) {
+            if expected.count == heard.count {
+                // Равная длина → позиционные подмены → правила замены.
+                for (e, h) in zip(expected, heard) where e.count >= minWordLength {
+                    guard !h.isEmpty, e.lowercased() != h.lowercased() else { continue }
+                    guard isRealError(expected: e, heard: h) else { continue }
+                    let key = h.lowercased()
+                    if !ruleSeen.contains(key) {
+                        ruleSeen.insert(key)
+                        suggestions.append(CorrectionSuggestion(pattern: h, replacement: e))
+                    }
+                }
+            } else {
+                // Разная длина → слова эталона, которых нет в распознанном → bias.
+                let heardLower = Set(heard.map { $0.lowercased() })
+                for word in expected where word.count >= minWordLength {
+                    let key = word.lowercased()
+                    guard !heardLower.contains(key), !biasSeen.contains(key) else { continue }
+                    guard !isNumeric(word) else { continue }               // числа не биасим
+                    guard !heard.contains(where: { sameWordFamily(word, $0) }) else { continue } // словоформа уже есть
                     biasSeen.insert(key)
                     biasTerms.append(word)
                 }
             }
-
-            // Позиционные подмены при равной длине → правила замены.
-            if expected.count == heard.count {
-                for (e, h) in zip(expected, heard) where e.count >= minWordLength {
-                    if e.lowercased() != h.lowercased() && !h.isEmpty {
-                        let key = h.lowercased()
-                        if !ruleSeen.contains(key) {
-                            ruleSeen.insert(key)
-                            suggestions.append(CorrectionSuggestion(pattern: h, replacement: e))
-                        }
-                    }
-                }
-            }
         }
 
-        // Правило замены само работает как bias (координатор биасит по «заменить на»),
-        // поэтому слова, уже покрытые правилом, не дублируем отдельным bias-термином.
+        // Правило само биасит по «заменить на» → не дублируем словом в bias.
         let ruleReplacements = Set(suggestions.map { $0.replacement.lowercased() })
         let dedupedBias = biasTerms.filter { !ruleReplacements.contains($0.lowercased()) }
 
         return CalibrationResult(biasTerms: dedupedBias, suggestions: suggestions)
+    }
+
+    // MARK: - Фильтры
+
+    /// Настоящая ли это ошибка (а не словоформа/число). Отсекает: цифры↔слово
+    /// (напр. «20»↔«двадцать») и однокоренные словоформы (напр. «приложений»↔
+    /// «приложения») — их «исправлять» бессмысленно.
+    private static func isRealError(expected: String, heard: String) -> Bool {
+        if isNumeric(expected) || isNumeric(heard) { return false }
+        if sameWordFamily(expected, heard) { return false }
+        return true
+    }
+
+    private static func isNumeric(_ s: String) -> Bool {
+        !s.isEmpty && s.allSatisfy { $0.isNumber }
+    }
+
+    /// Отличаются ли слова только окончанием при длинном общем корне (словоформы).
+    private static func sameWordFamily(_ a: String, _ b: String) -> Bool {
+        let al = Array(a.lowercased()), bl = Array(b.lowercased())
+        var cp = 0
+        while cp < al.count && cp < bl.count && al[cp] == bl[cp] { cp += 1 }
+        let maxLen = max(al.count, bl.count)
+        return cp >= 4 && cp >= maxLen - 3
     }
 
     // MARK: - Внутреннее

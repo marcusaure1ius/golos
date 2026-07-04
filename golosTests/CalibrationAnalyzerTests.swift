@@ -49,10 +49,30 @@ import Foundation
     }
 
     @Test func preservesExpectedCasingInBiasTerm() {
-        // Пропущенное слово (разная длина → правила нет) сохраняет регистр эталона.
-        let r = CalibrationAnalyzer.analyze([pair("позвони Денису срочно", "позвони денисе рано срочно")])
+        // Полностью пропущенное слово (разная длина → правила нет) сохраняет регистр.
+        let r = CalibrationAnalyzer.analyze([pair("позвони Денису вечером", "позвони вечером")])
         #expect(r.biasTerms == ["Денису"])
         #expect(r.suggestions.isEmpty)
+    }
+
+    @Test func skipsNumericMismatch() {
+        // Число ↔ слово (20 ↔ двадцать) — не ошибка, не предлагаем.
+        let r = CalibrationAnalyzer.analyze([pair("через двадцать минут", "через 20 минут")])
+        #expect(r.suggestions.isEmpty)
+        #expect(r.biasTerms.isEmpty)
+    }
+
+    @Test func skipsInflectionVariant() {
+        // Однокоренная словоформа (приложения ↔ приложений) — не ошибка.
+        let r = CalibrationAnalyzer.analyze([pair("открой документы позже", "открой документов позже")])
+        #expect(r.suggestions.isEmpty)
+        #expect(r.biasTerms.isEmpty)
+    }
+
+    @Test func keepsRealMidWordError() {
+        // Расхождение в середине (гидхаб ↔ гитхаб) — настоящая ошибка, оставляем.
+        let r = CalibrationAnalyzer.analyze([pair("открой гитхаб быстро", "открой гидхаб быстро")])
+        #expect(r.suggestions == [CorrectionSuggestion(pattern: "гидхаб", replacement: "гитхаб")])
     }
 
     @Test func dedupesMissingWordAcrossPairs() {
