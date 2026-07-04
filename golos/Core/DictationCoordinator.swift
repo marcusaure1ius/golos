@@ -123,8 +123,10 @@ final class DictationCoordinator: ObservableObject {
                 await provider.flushSamples()
                 Log.coordinator.info("finalizing — calling sidecar")
                 let result = try await provider.finalize()
-                // Постобработка по пользовательскому словарю до истории/статистики/вставки.
-                let text = TranscriptCorrector.apply(result.text, rules: await DictionaryStore.shared.all())
+                // Постобработка до истории/статистики/вставки: сначала чистим хезитации
+                // («э-э», «мм»…), затем применяем пользовательский словарь замен.
+                let cleaned = FillerCleaner.clean(result.text)
+                let text = TranscriptCorrector.apply(cleaned, rules: await DictionaryStore.shared.all())
                 Log.coordinator.info("got transcript: '\(text, privacy: .public)' (\(result.durationMs, privacy: .public)ms)")
                 if !text.isEmpty {
                     let now = Date()
