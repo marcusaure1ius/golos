@@ -27,9 +27,6 @@ enum SidebarSection: String, Hashable, CaseIterable, Identifiable {
         case .about:      return "info.circle"
         }
     }
-    var disabled: Bool {
-        self == .dictionary
-    }
 }
 
 struct SidebarView: View {
@@ -88,12 +85,11 @@ struct SidebarView: View {
             icon: section.systemImage,
             title: section.title,
             selected: isSelected,
-            disabled: section.disabled,
-            soon: section.disabled
+            disabled: false,
+            soon: false
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            guard !section.disabled else { return }
             selection = section
         }
     }
