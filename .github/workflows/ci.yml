@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            golos-asr/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('golos-asr/Cargo.lock') }}
+
+      - name: Rust tests
+        working-directory: golos-asr
+        run: cargo test --release
+
+      - name: Build sidecar
+        run: |
+          cd golos-asr
+          cargo build --release
+          mkdir -p target/universal-apple-darwin/release
+          cp target/release/golos-asr target/universal-apple-darwin/release/golos-asr
+
+      - name: Build app
+        run: |
+          xcodebuild build -project golos.xcodeproj -scheme golos \
+            -configuration Debug -destination 'platform=macOS' \
+            -derivedDataPath /tmp/golos-ci \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Automatic \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Swift unit tests
+        run: |
+          xcodebuild test -project golos.xcodeproj -scheme golos \
+            -destination 'platform=macOS' \
+            -derivedDataPath /tmp/golos-ci \
+            -only-testing:golosTests \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Automatic \
+            CODE_SIGNING_REQUIRED=NO
